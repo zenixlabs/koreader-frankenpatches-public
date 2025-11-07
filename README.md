@@ -11,7 +11,7 @@ INSTALLATION: drop the .lua into the koreader/patches folder. a new action calle
 # progress bar twins
 ![twins](https://github.com/user-attachments/assets/d4bd1992-8928-40b1-b30c-6fda269f5115)
 
-two progress bars side by side. you can choose what progress (chapter or book) to show on each. you can even join them together and mirror one of them so that they essentially look like one regular progress that fills from the middle towards the edges. 
+two progress bars side by side. you can choose what progress (chapter or book) to show on each. you can even join them together and mirror one of them so that they essentially look like one regular progress bar that fills from the middle towards the edges. 
 
 INSTALLATION: drop the .lua into the koreader/patches folder. you'll find instructions to customise the patch inside the file.
 
