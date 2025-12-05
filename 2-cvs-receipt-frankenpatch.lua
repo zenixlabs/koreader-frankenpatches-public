@@ -1,5 +1,5 @@
---[[ cvs receipt v2.3 #10 - public ]]
--- added author to brt window
+--[[ cvs receipt v2.3 #11 - public ]]
+-- infinite loop protection in addToMainMenu
 
 local Blitbuffer = require("ffi/blitbuffer")
 local bookCompleted = false
@@ -103,11 +103,16 @@ local cvsMenu = {
         },  
     }  
 
-local orig_ReaderFooter_addToMainMenu = ReaderFooter.addToMainMenu
-ReaderFooter.addToMainMenu = function(self, menu_items)
-	orig_ReaderFooter_addToMainMenu(self, menu_items)  
-    menu_items.cvs_rct_menu = cvsMenu
-end 
+if not ReaderFooter._cvs_receipt_hooked then
+	local orig_ReaderFooter_addToMainMenu_cvs = ReaderFooter.addToMainMenu
+	ReaderFooter.addToMainMenu = function(self, menu_items)
+		if orig_ReaderFooter_addToMainMenu_cvs then
+			orig_ReaderFooter_addToMainMenu_cvs(self, menu_items)
+		end
+		menu_items.cvs_rct_menu = cvsMenu
+	end 
+	ReaderFooter._cvs_receipt_hooked = true
+end
 
 local quicklookwindow =
     InputContainer:extend {
