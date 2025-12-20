@@ -1,5 +1,5 @@
---[[ mini receipt v1.0 #3 ]]
--- bc window bottom padding
+--[[ mini receipt v1.0 #4 ]]
+-- time left shows "fin." on last page of chapter and book instead of " .. complete".
 
 local Blitbuffer = require("ffi/blitbuffer")
 local bookCompleted = false
@@ -266,7 +266,7 @@ function quicklookwindow:init()
         return width
     end
 
-    local function textboxx(txt, tfont, tsize, tclr, twidth, tbold, alignmt, justif, line_ht) -- creates TextBoxWidget
+    local function textboxx(txt, tfont, tsize, tclr, twidth, tbold, alignmt) -- creates TextBoxWidget
         if not tclr then tclr = w_font.color.black end
         if not tbold then tbold = false end
         if not alignmt then alignmt = "center" end
@@ -354,16 +354,6 @@ function quicklookwindow:init()
             timeLeft_chapter = secsToTimestring(timeLeft_secs(chapter_pgturn_left + 1), true) .. " left"
         end
 
-		if not statsEnabled then
-			timeLeft_book, timeLeft_chapter = "--", "--"
-		end		
-		if chapter_pgturn == chapter_pgturn_total then 
-			timeLeft_chapter = "chapter complete"
-		end
-		if book_pageturn == book_pageturn_total then 
-			timeLeft_book = "book complete"
-		end
-
 		-- BUILD WIDGETS
 		
 		local lineClearance = Screen:scaleBySize(10)
@@ -402,7 +392,14 @@ function quicklookwindow:init()
 			local pXofY = "page " .. book_page .. " of " .. book_total
 			local pXofY_widget = textboxx(pXofY, w_font.face.reg, w_font.size.small, w_font.color.black, wid, nil, "left")
 			
-			local bookTLeft_widget = textboxx(timeLeft_book, w_font.face.reg, w_font.size.small, w_font.color.black, wid, true,"left")
+			local tleft_font = w_font.face.bold
+			local tleft_text = timeLeft_book
+			if book_pageturn == book_pageturn_total then 
+				tleft_font = w_font.face.boldit
+				tleft_text = "fin."
+			end
+			if not statsEnabled then tleft_text = "--" end
+			local bookTLeft_widget = textboxx(tleft_text, tleft_font, w_font.size.small, w_font.color.black, wid, nil,"left")
 			
 			return VerticalGroup:new{
 								t_widget,
@@ -463,8 +460,15 @@ function quicklookwindow:init()
 			local pXofY = "page " .. chapter_page .. " of " .. chapter_total
 			pXofY = T(_("%1 (%2%)"), pXofY, prog_pct_chapter)
 			local pXofY_widget = textboxx(pXofY, w_font.face.reg, w_font.size.small, w_font.color.black, wid, nil, "left")
-			
-			local chapterTLeft_widget = textboxx(timeLeft_chapter, w_font.face.reg, w_font.size.small, w_font.color.black, wid, true,"left")
+
+			local tleft_font = w_font.face.bold
+			local tleft_text = timeLeft_chapter		
+			if chapter_pgturn == chapter_pgturn_total then 
+				tleft_font = w_font.face.boldit
+				tleft_text = "fin."
+			end			
+			if not statsEnabled then tleft_text = "--" end				
+			local chapterTLeft_widget = textboxx(tleft_text, tleft_font, w_font.size.small, w_font.color.black, wid, nil,"left")
 			
 			return VerticalGroup:new{
 					t_widget,
