@@ -6,7 +6,14 @@
 
 a little box that you can summon with a corner tap (or any other gesture) from reader view. shows your chapter progress, book progress and time left in each. i made this because i wanted to keep my reader view squeaky clean but also easily see how far into the book i am. 
 
-INSTALLATION: drop the .lua into the koreader/patches folder. a new action called 'cvs receipt' will show up under 'reader' section in the gestures menu. 
+INSTALLATION: drop the .lua into the koreader/patches folder. set up a gesture to trigger the 'cvs receipt' action in 'general' category. 
+
+# mini receipt
+<img width="300" height="400" alt="Reader_gerald durrell - my family and other animals epub_p_12_2025-12-18_174637" src="https://github.com/user-attachments/assets/d72382c7-81b7-4266-8930-b127a392e340" />
+
+made this because at one point i found cvs receipt to be a little too big and cluttered.
+
+INSTALLATION: drop the .lua into the koreader/patches folder. set up a gesture to trigger the 'cvs receipt' action in 'general' category. 
 
 # progress bar twins
 ![twins](https://github.com/user-attachments/assets/d4bd1992-8928-40b1-b30c-6fda269f5115)
