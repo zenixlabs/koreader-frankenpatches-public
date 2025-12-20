@@ -9,7 +9,8 @@ a little box that you can summon with a corner tap (or any other gesture) from r
 INSTALLATION: drop the .lua into the koreader/patches folder. set up a gesture to trigger the 'cvs receipt' action in 'general' category. 
 
 # mini receipt
-<img width="600" height="800" alt="Reader_gerald durrell - my family and other animals epub_p_12_2025-12-18_174637" src="https://github.com/user-attachments/assets/d72382c7-81b7-4266-8930-b127a392e340" />
+<img width="300" height="400" alt="Reader_gerald durrell - my family and other animals epub_p_12_2025-12-18_174637" src="https://github.com/user-attachments/assets/d72382c7-81b7-4266-8930-b127a392e340" />
+
 made this because at one point i found cvs receipt to be a little too big and cluttered.
 
 INSTALLATION: drop the .lua into the koreader/patches folder. set up a gesture to trigger the 'cvs receipt' action in 'general' category. 
