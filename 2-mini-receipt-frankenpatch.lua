@@ -1,6 +1,5 @@
---[[ mini receipt v1.0 #5 ]]
--- code cleanup
--- renamed menu and dispatcher listing from 'cvs receipt' to 'mini receipt'
+--[[ mini receipt v1.0 #6 ]]
+-- help text
 
 local Blitbuffer = require("ffi/blitbuffer")
 local CenterContainer = require("ui/widget/container/centercontainer")
@@ -52,8 +51,8 @@ local cvsMenu = {
         sorting_hint = "tools",  
         sub_item_table = {  
 			{  
-                text = _("'book complete' window"),
-				help_text = _("a little window that pops up when you flip past the last page of a book. shows time read, starting date and highlight count for current book.\n\n(set Menu>gear icon>End of document action to 'Do nothing' for best results)."),
+                text = _("show 'book complete' window"),
+				help_text = _("a little window that pops up when you flip past the last page of a book. shows time read, starting date and highlight count for current book.\n\n(set Menu>gear icon>Document>End of document action to 'Do nothing' for best results)."),
                 checked_func = function()  
                     return G_reader_settings:isTrue("cvs_rct_book_complete_window")  
                 end,  
@@ -64,7 +63,7 @@ local cvsMenu = {
             }, 
 			{  
                 text = _("show author(s) in 'books read today' window."),  
-				help_text = _("uncheck this if for a cleaner, more minimal looking 'books read today' window."),
+				help_text = _("shows or hides authors in 'book complete' window."),
                 checked_func = function()  
                     return G_reader_settings:isTrue("cvs_rct_brtAuthors")  
                 end,  
@@ -74,7 +73,8 @@ local cvsMenu = {
                 end,  
             },			
 			{  
-                text = _("serif font"),  				
+                text = _("serif font"),  		
+				help_text = _("toggles between NotoSans and NotoSerif fonts."),
                 checked_func = function()  
                     return G_reader_settings:isTrue("cvs_rct_altFont")  
                 end,  
