@@ -1,8 +1,8 @@
---[[ mini receipt v1.0 #4 ]]
--- time left shows "fin." on last page of chapter and book instead of " .. complete".
+--[[ mini receipt v1.0 #5 ]]
+-- code cleanup
+-- renamed menu and dispatcher listing from 'cvs receipt' to 'mini receipt'
 
 local Blitbuffer = require("ffi/blitbuffer")
-local bookCompleted = false
 local CenterContainer = require("ui/widget/container/centercontainer")
 local datetime = require("datetime")
 local DataStorage = require("datastorage")
@@ -18,10 +18,7 @@ local GestureRange = require("ui/gesturerange")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
 local HorizontalSpan = require("ui/widget/horizontalspan")
 local InputContainer = require("ui/widget/container/inputcontainer")
-local LeftContainer = require("ui/widget/container/leftcontainer")
 local LineWidget = require("ui/widget/linewidget")
-local Math = require("optmath")
-local ProgressWidget = require("ui/widget/progresswidget")
 local ReaderFooter = require("apps/reader/modules/readerfooter")
 local ReaderUI = require("apps/reader/readerui")
 local ReaderView = require("apps/reader/modules/readerview")
@@ -31,18 +28,16 @@ local SQ3 = require("lua-ljsqlite3/init")
 local T = require("ffi/util").template
 local TextWidget = require("ui/widget/textwidget")
 local TextBoxWidget = require("ui/widget/textboxwidget")
-local UIManager = require("ui/uimanager")
-local userpatch = require("userpatch")  
+local UIManager = require("ui/uimanager") 
 local util = require("util")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local Widget = require("ui/widget/widget")
 local _ = require("gettext")
 local N_ = _.ngettext
-local WidgetContainer = require("ui/widget/container/widgetcontainer")
 
 -- SWITCHES
-
+local bookCompleted = false
 local showBookCompleteWindow, altFontEnabled, brtAuthorsEnabled = false, false, false
 if G_reader_settings and G_reader_settings.isTrue then 
 	showBookCompleteWindow = G_reader_settings:isTrue("cvs_rct_book_complete_window")
@@ -53,7 +48,7 @@ end
 -- ADD TO MENU
 
 local cvsMenu = {  
-        text = _("cvs receipt"),  
+        text = _("mini receipt"),  
         sorting_hint = "tools",  
         sub_item_table = {  
 			{  
@@ -900,7 +895,7 @@ Dispatcher:registerAction(
     {
         category = "none",
         event = "QuickLook",
-        title = _("cvs receipt"),
+        title = _("mini receipt"),
         general = true
     }
 )
