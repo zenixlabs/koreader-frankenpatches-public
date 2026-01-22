@@ -1,6 +1,9 @@
 # koreader-frankenpatches
 "frankenpatches" because every little coding experiment i take on is a frankenstein mix of borrowed code, gpt code and some of my own. :D
 
+# browser hide bookstatusicons
+hides those pesky dogears that show up on the bottom right corner of the book cover in mosaicmenu after the book has been opened.
+
 # cvs receipt
 ![cvs receipt](https://github.com/user-attachments/assets/ec9cebc3-1a03-4bb7-ad8d-b1f25fc5a6da)
 
