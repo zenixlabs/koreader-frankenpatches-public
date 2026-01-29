@@ -5,7 +5,7 @@
 hides those pesky dogears that show up on the bottom right corner of the book cover in mosaicmenu after the book has been opened.
 
 # cvs receipt
-![cvs receipt](https://github.com/user-attachments/assets/ec9cebc3-1a03-4bb7-ad8d-b1f25fc5a6da)
+![511376917-ec9cebc3-1a03-4bb7-ad8d-b1f25fc5a6da](https://github.com/user-attachments/assets/0d2b4843-bc31-44fd-93a2-934ae468b051)
 
 a little box that you can summon with a corner tap (or any other gesture) from reader view. shows your chapter progress, book progress and time left in each. i made this because i wanted to keep my reader view squeaky clean but also easily see how far into the book i am. 
 
