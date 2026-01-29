@@ -2,10 +2,12 @@
 "frankenpatches" because every little coding experiment i take on is a frankenstein mix of borrowed code, gpt code and some of my own. :D
 
 # browser hide bookstatusicons
+<img width="674" height="328" alt="before" src="https://github.com/user-attachments/assets/4dac7c05-ba31-4c6c-96a1-d9895b9c2759" />
+
 hides those pesky dogears that show up on the bottom right corner of the book cover in mosaicmenu after the book has been opened.
 
 # cvs receipt
-![511376917-ec9cebc3-1a03-4bb7-ad8d-b1f25fc5a6da](https://github.com/user-attachments/assets/0d2b4843-bc31-44fd-93a2-934ae468b051)
+![511376917-ec9cebc3-1a03-4bb7-ad8d-b1f25fc5a6da](https://github.com/user-attachments/assets/79e27a09-cbae-4f94-8396-4d65d7295011)
 
 a little box that you can summon with a corner tap (or any other gesture) from reader view. shows your chapter progress, book progress and time left in each. i made this because i wanted to keep my reader view squeaky clean but also easily see how far into the book i am. 
 
