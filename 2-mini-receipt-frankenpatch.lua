@@ -1,5 +1,6 @@
---[[ mini receipt v1.0 #6 ]]
--- help text
+--[[ mini receipt v1.0.7 ]]
+--better baseline matching for book progress
+--removed leading zero for book progress
 
 local Blitbuffer = require("ffi/blitbuffer")
 local CenterContainer = require("ui/widget/container/centercontainer")
@@ -416,31 +417,42 @@ function quicklookwindow:init()
 		local function buildBookPctBox()
 			local wid = w_width * 0.3
 			local pct = prog_pct_book
-			if pct > 0 and pct < 10 then pct = "0" .. pct end
-			local pct_textsize = (prog_pct_book < 100) and 55 or 45			
+			--if pct > 0 and pct < 10 then pct = "0" .. pct end
+			local pct_textsize 
+			if pct == 100 then 
+				pct_textsize = 45
+			elseif pct < 10 then 
+				pct_textsize = 60
+			else
+				pct_textsize = 55
+			end		
 			
-			local pctBox = textt(pct, w_font.face.reg, pct_textsize, w_font.color.black, 0)
-			pctBox = 
-				HorizontalGroup:new{
-				HorizontalSpan:new{width = Screen:scaleBySize(3)},
-				pctBox
-			}
-			local pctBox_dimen = pctBox:getSize()
+			local number = textt(pct, w_font.face.reg, pct_textsize, w_font.color.black, 0)
+			local number_dimen = number:getSize()
 			
 			local pctSymbol = textt("%", w_font.face.reg, w_font.size.small, w_font.color.black, 0)
 			local pctSymbol_dimen = pctSymbol:getSize()
 			
-			local remaining = wid - pctBox_dimen.w - pctSymbol_dimen.w
+			-- baseline matching
+			pctSymbol.forced_height = number_dimen.h
+			local number_baseline = number:getBaseline()
+			local pctSymbol_baseline = pctSymbol:getBaseline()
+			local baseline_diff = number_baseline - pctSymbol_baseline
+			pctSymbol.forced_baseline = pctSymbol_baseline + baseline_diff
 			
-			return HorizontalGroup:new{
-									HorizontalSpan:new{width = remaining / 2},
-									pctBox,
-									VerticalGroup:new{
-													VerticalSpan:new{width = pctBox_dimen.h - pctSymbol_dimen.h * 2},
-													pctSymbol,
-									},
-									HorizontalSpan:new{width = remaining / 2},
+			local correction = pct >= 10 and (math.floor(pctSymbol_dimen.w) / 2) or math.floor(pctSymbol_dimen.w)
+			
+			local numberAndSymbol = HorizontalGroup:new{
+									HorizontalSpan:new{width = correction},
+									number,
+									--HorizontalSpan:new{width = Size.padding.small},
+									pctSymbol,
 			}
+			local numberAndSymbol = CenterContainer:new{
+											dimen = Geom:new{w = wid, h = bookBox_dimen.h,},											
+											numberAndSymbol,			
+			}
+			return numberAndSymbol
 		end
 		local bookPctBox = buildBookPctBox()
 		
