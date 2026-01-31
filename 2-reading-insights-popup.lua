@@ -1,5 +1,5 @@
---[ reading insights popup v1.0.38 ] 
---added:missing words to language array
+--[ reading insights popup v1.0.39 ] 
+--added: streaks box stretch
 
 -- ABOUT:
 -- this is a modified version of the 'reading insights popup' userpatch made by u/quanganhdo.
@@ -1209,6 +1209,17 @@ local function buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colo
 	local isLongest_w = (streaks.weeks.best > 1) and (streaks.weeks.best == streaks.weeks.current) and true or false	
 	local isLongest_d = (streaks.days.best > 1) and (streaks.days.best == streaks.days.current) and true or false	
 	
+	local bestModule = VerticalGroup:new{
+							buildBestModule(streaks.weeks.best, 0, isLongest_w, streaks.weeks.best_start, streaks.weeks.best_end),
+							VerticalSpan:new{width = Screen:scaleBySize(5)},
+							buildBestModule(streaks.days.best, 1, isLongest_d, streaks.days.best_start, streaks.days.best_end),
+	}
+	
+	local bestModule_dimen = bestModule:getSize()
+	if bestModule_dimen.h > streaks_dimen.box_height then 
+		streaks_dimen.box_height = bestModule_dimen.h + Screen:scaleBySize(6)
+	end
+	
 	return FrameContainer:new{
 			padding = 0,
 			bordersize = Screen:scaleBySize(1),
@@ -1219,11 +1230,7 @@ local function buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colo
                 dimen = Geom:new{ w = streaks_dimen.box_width, h = streaks_dimen.box_height },
 				HorizontalGroup:new{
 					HorizontalSpan:new{width = Screen:scaleBySize(9)},
-					VerticalGroup:new{
-							buildBestModule(streaks.weeks.best, 0, isLongest_w, streaks.weeks.best_start, streaks.weeks.best_end),
-							VerticalSpan:new{width = Screen:scaleBySize(5)},
-							buildBestModule(streaks.days.best, 1, isLongest_d, streaks.days.best_start, streaks.days.best_end),
-					},
+					bestModule
 				},
 			}
 	}
@@ -1257,10 +1264,10 @@ local function buildInsightsSections(popup_self, streaks, yearly_stats, yearRang
 	elseif maxCurrentStreak > 199 then 
 		fonts.streakValue = Font:getFace("NotoSerif-Regular.ttf", 55)	
 	end	
-	
+
+	local bestStreakWidget = buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colors)	
 	local streaks_weekWidget = buildCurrentStreakWidget(streaks_dimen, streaks.weeks.current, 0, fonts, streaks_colors)
 	local streaks_dayWidget = buildCurrentStreakWidget(streaks_dimen, streaks.days.current, 1, fonts, streaks_colors)
-	local bestStreakWidget = buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colors)
 	local streaksBlock = HorizontalGroup:new{
 								streaks_weekWidget, 
 								HorizontalSpan:new{ width = Size.padding.large},
