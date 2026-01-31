@@ -1,5 +1,5 @@
---[ reading insights popup v1.0.37 ] 
---added:help text
+--[ reading insights popup v1.0.38 ] 
+--added:missing words to language array
 
 -- ABOUT:
 -- this is a modified version of the 'reading insights popup' userpatch made by u/quanganhdo.
@@ -96,10 +96,16 @@ local PATCH_L10N = {
         ["minutes read"] = "minutes read",
         ["hour read"] = "hour read",
         ["hours read"] = "hours read",
+		["day"] = "day",
+		["days"] = "days",
+		["daily record"] = "daily record",
         ["day read"] = "day read",
         ["days read"] = "days read",
         ["page read"] = "page read",
         ["pages read"] = "pages read",
+		["week"] = "week",
+		["weeks"] = "weeks",
+		["weekly record"] = "weekly record",
         ["week in a row"] = "week in a row",
         ["weeks in a row"] = "weeks in a row",
         ["day in a row"] = "day in a row",
@@ -152,10 +158,16 @@ local PATCH_L10N = {
         ["minutes read"] = "phút đã đọc",
         ["hour read"] = "giờ đã đọc",
         ["hours read"] = "giờ đã đọc",
+		["day"] = "day",
+		["days"] = "days",
+		["daily record"] = "daily record",
         ["day read"] = "ngày đã đọc",
         ["days read"] = "ngày đã đọc",
         ["page read"] = "trang đã đọc",
         ["pages read"] = "trang đã đọc",
+		["week"] = "week",
+		["weeks"] = "weeks",
+		["weekly record"] = "weekly record",
         ["week in a row"] = "tuần liên tiếp",
         ["weeks in a row"] = "tuần liên tiếp",
         ["day in a row"] = "ngày liên tiếp",
@@ -1148,7 +1160,7 @@ end
 local function buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colors)
 
 	local function buildBestModule(value, weekOrDay, isLongest, ts_start, ts_end)
-		local heading_text = weekOrDay == 0 and "weekly record" or "daily record" 
+		local heading_text = weekOrDay == 0 and _("weekly record") or _("daily record") 
 		if isLongest then heading_text = heading_text .. " ★" end
 		local heading_text_widget = TextBoxWidget:new{
 								width = streaks_dimen.box_width - Screen:scaleBySize(10),
@@ -1158,8 +1170,8 @@ local function buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colo
 								fgcolor = streaks_colors.midGray,
 		}
 		
-		local value_text = weekOrDay == 0 and N_(" week", " weeks", streaks.best_weeks) or N_(" day", " days", streaks.best_days)		
-		local value_text = value .. value_text
+		local value_text = weekOrDay == 0 and N_("week", "weeks", streaks.best_weeks) or N_("day", "days", streaks.best_days)		
+		local value_text = value .. " " .. value_text
 		local value_widget = TextBoxWidget:new{
 									width = streaks_dimen.box_width - Screen:scaleBySize(10),
 									padding = 0,
