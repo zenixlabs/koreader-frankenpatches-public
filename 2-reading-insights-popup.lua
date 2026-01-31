@@ -1,5 +1,5 @@
---[ reading insights popup v1.0.39 ] 
---added: streaks box stretch
+--[ reading insights popup v1.0.40 ] 
+--fixed: translate all phrases
 
 -- ABOUT:
 -- this is a modified version of the 'reading insights popup' userpatch made by u/quanganhdo.
@@ -1050,7 +1050,7 @@ local function buildMonthlyChart(popup_self, monthly_data, layout, fonts)
             table.insert(bars_row, tappable_bar)
 
             local month_label_widget = TextWidget:new{
-                text = string.lower(m.label),
+                text = string.lower(_(m.label)),
                 face = font_small,
             }
             table.insert(month_labels_row, CenterContainer:new{
@@ -1124,7 +1124,7 @@ end
 
 local function buildCurrentStreakWidget(streaks_dimen, value, weeksOrDays, fonts, streaks_colors)
 
-	local heading_text = weeksOrDays == 0 and "weeks in a row" or "days in a row"
+	local heading_text = weeksOrDays == 0 and _("weeks in a row") or _("days in a row")
 	local heading_text_widget = TextWidget:new{
 								text = heading_text,
 								padding = 0,
@@ -1188,8 +1188,8 @@ local function buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colo
 		} 
 		
 		if  value > 1 and ts_start and ts_end then 	
-			local startDay =  os.date("%-d %b '%y", ts_start) 		--old: "%-d %b '%y"
-			local endDay = os.date("%-d %b '%y", ts_end)
+			local startDay =  os.date("%-d " .._(os.date("%b", ts_start)) .. " '%y", ts_start)
+			local endDay = os.date("%-d " .._(os.date("%b", ts_end)) .. " '%y", ts_end)
 			local startEndWidget_txt = string.upper(startDay .. " - " .. endDay)
 			local startEndWidget = TextBoxWidget:new{
 									width = streaks_dimen.box_width - Screen:scaleBySize(10),
