@@ -1,5 +1,5 @@
---[ reading insights popup v1.0.40 ] 
---fixed: translate all phrases
+--[ reading insights popup v1.0.41 ] 
+--code cleanup
 
 -- ABOUT:
 -- this is a modified version of the 'reading insights popup' userpatch made by u/quanganhdo.
@@ -275,8 +275,8 @@ local insightsCache = G_reader_settings:readSetting("readingInsights_cache") or 
 				monthlyReadingHours = nil,
 }
 local cache_timestamps = G_reader_settings:readSetting("readingInsights_cacheTimestamps") or { 
-				partialClear = 0,	-- last local db update (pulled from lfs)
-				fullClear = 0, 		-- cached stats sync timestamp (recorded via stats plugin patch)
+				partialClear = 0,	-- last local db update aka cache partially cleared (pulled from lfs)
+				fullClear = 0, 		-- cached stats sync timestamp aka cache fully cleared (recorded via stats plugin patch)
 				statsSynced = 0,	-- latest stats sync timestamp (recorded via stats plugin patch)
 				lastRefreshed = 0,	-- latest cache modified timestamp (recorded bwith os.time(), used to 
 									-- manage refreshOnlyOncePerDay)
@@ -1187,7 +1187,7 @@ local function buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colo
 					value_widget,
 		} 
 		
-		if  value > 1 and ts_start and ts_end then 	
+		if  (value > 1 and ts_start and ts_end) or (ts_start == 0 and ts_end == 0)then 	
 			local startDay =  os.date("%-d " .._(os.date("%b", ts_start)) .. " '%y", ts_start)
 			local endDay = os.date("%-d " .._(os.date("%b", ts_end)) .. " '%y", ts_end)
 			local startEndWidget_txt = string.upper(startDay .. " - " .. endDay)
@@ -1209,15 +1209,15 @@ local function buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colo
 	local isLongest_w = (streaks.weeks.best > 1) and (streaks.weeks.best == streaks.weeks.current) and true or false	
 	local isLongest_d = (streaks.days.best > 1) and (streaks.days.best == streaks.days.current) and true or false	
 	
-	local bestModule = VerticalGroup:new{
+	local bestBlock = VerticalGroup:new{
 							buildBestModule(streaks.weeks.best, 0, isLongest_w, streaks.weeks.best_start, streaks.weeks.best_end),
 							VerticalSpan:new{width = Screen:scaleBySize(5)},
 							buildBestModule(streaks.days.best, 1, isLongest_d, streaks.days.best_start, streaks.days.best_end),
 	}
 	
-	local bestModule_dimen = bestModule:getSize()
-	if bestModule_dimen.h > streaks_dimen.box_height then 
-		streaks_dimen.box_height = bestModule_dimen.h + Screen:scaleBySize(6)
+	local bestBlock_dimen = bestBlock:getSize()
+	if bestBlock_dimen.h > streaks_dimen.box_height then 
+		streaks_dimen.box_height = bestBlock_dimen.h + Screen:scaleBySize(6)
 	end
 	
 	return FrameContainer:new{
@@ -1230,7 +1230,7 @@ local function buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colo
                 dimen = Geom:new{ w = streaks_dimen.box_width, h = streaks_dimen.box_height },
 				HorizontalGroup:new{
 					HorizontalSpan:new{width = Screen:scaleBySize(9)},
-					bestModule
+					bestBlock
 				},
 			}
 	}
