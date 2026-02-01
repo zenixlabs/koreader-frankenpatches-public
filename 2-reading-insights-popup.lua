@@ -1,5 +1,6 @@
---[ reading insights popup v1.0.41 ] 
---code cleanup
+--[ reading insights popup v1.0.42 ] 
+--added: defence from infinite loop in calculateStreaks()
+--removed: refreshDataAndRepaint()
 
 -- ABOUT:
 -- this is a modified version of the 'reading insights popup' userpatch made by u/quanganhdo.
@@ -275,18 +276,18 @@ local insightsCache = G_reader_settings:readSetting("readingInsights_cache") or 
 				monthlyReadingHours = nil,
 }
 local cache_timestamps = G_reader_settings:readSetting("readingInsights_cacheTimestamps") or { 
-				partialClear = 0,	-- last local db update aka cache partially cleared (pulled from lfs)
-				fullClear = 0, 		-- cached stats sync timestamp aka cache fully cleared (recorded via stats plugin patch)
-				statsSynced = 0,	-- latest stats sync timestamp (recorded via stats plugin patch)
-				lastRefreshed = 0,	-- latest cache modified timestamp (recorded bwith os.time(), used to 
-									-- manage refreshOnlyOncePerDay)
+				partialClear = 1262304000,	-- last local db update aka cache partially cleared (pulled from lfs)
+				fullClear = 1262304000, 	-- cached stats sync timestamp aka cache fully cleared (recorded via stats plugin patch)
+				statsSynced = 1262304000,	-- latest stats sync timestamp (recorded via stats plugin patch)
+				lastRefreshed = 1262304000,	-- latest cache modified timestamp (recorded bwith os.time(), used to 
+											-- manage refreshOnlyOncePerDay)
 }
 local cachedLayout = nil
 local function uploadCacheTimestampsTogreader()
 	G_reader_settings:saveSetting("readingInsights_cacheTimestamps", cache_timestamps)
 end
-local function uploadInsightsCacheToGReader()
-	logger.info("READING-INSIGHTS-POPUP: UPLOADING CACHE")
+local function uploadInsightsCacheToGReader(item)
+	logger.info("READING-INSIGHTS-POPUP: UPLOADING CACHE: ", item)
 	G_reader_settings:saveSetting("readingInsights_cache", insightsCache)
 end
 local function set_cache_partialClear_timestamp(timestamp)
@@ -374,14 +375,14 @@ local fallbackTable = {
 				days = 	{
 							current = 0,
 							best = 0,
-							best_start = 0,
-							best_end = 0,							
+							best_start = 1,
+							best_end = 1,							
 						},
 				weeks = {
 							current = 0,
 							best = 0,
-							best_start = 0,
-							best_end = 0,								
+							best_start = 1,
+							best_end = 1,								
 						},
     },
 	yearRange = { min_year = 0000, max_year = 0000 },
@@ -419,9 +420,22 @@ local function withStatement(conn, sql, fn)
 end
 
 local function computeStreaks(entries_desc, is_consecutive, is_current_start, weeksOrDays)
+	local a = {
+				current = 0,
+				best = 0,
+				best_start = 0,
+				best_end = 0,							
+	}
     if #entries_desc == 0 then
-        return 0, 0
+        return a
+	elseif #entries_desc == 1 then
+		a.best = 1
+		if is_current_start(entries_desc[1][1]) then 
+			a.current = 1 			
+		end
+		return a
     end
+	a = nil
 
     local current = 0
     if is_current_start(entries_desc[1][1]) then
@@ -1170,7 +1184,7 @@ local function buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colo
 								fgcolor = streaks_colors.midGray,
 		}
 		
-		local value_text = weekOrDay == 0 and N_("week", "weeks", streaks.best_weeks) or N_("day", "days", streaks.best_days)		
+		local value_text = weekOrDay == 0 and N_("week", "weeks", streaks.weeks.best) or N_("day", "days", streaks.days.best)		
 		local value_text = value .. " " .. value_text
 		local value_widget = TextBoxWidget:new{
 									width = streaks_dimen.box_width - Screen:scaleBySize(10),
@@ -1187,7 +1201,7 @@ local function buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colo
 					value_widget,
 		} 
 		
-		if  (value > 1 and ts_start and ts_end) or (ts_start == 0 and ts_end == 0)then 	
+		if  (value > 1 and ts_start and ts_end) or (ts_start >= 1 and ts_end >=1)then 
 			local startDay =  os.date("%-d " .._(os.date("%b", ts_start)) .. " '%y", ts_start)
 			local endDay = os.date("%-d " .._(os.date("%b", ts_end)) .. " '%y", ts_end)
 			local startEndWidget_txt = string.upper(startDay .. " - " .. endDay)
@@ -1353,7 +1367,7 @@ function ReadingInsightsPopup:calculateStreaks()
 		]]  
 		withStatement(conn, sql, function(stmt)  
 			for row in stmt:rows() do  
-				table.insert(dates, {  row[1], row[2] }) -- { date, timestamp}
+				table.insert(dates, { row[1], tonumber(row[2]) }) -- { date, timestamp}
 			end  
 		end)
 
@@ -1375,7 +1389,7 @@ function ReadingInsightsPopup:calculateStreaks()
             local expected_prev = os.date("%Y-%m-%d", prev_time - 86400)
             return curr_date == expected_prev
         end
-
+				
         streaks.days = computeStreaks(dates, isConsecutiveDay, isCurrentDayStart, 1)
 
 		local weeks = {}
@@ -1416,7 +1430,7 @@ function ReadingInsightsPopup:calculateStreaks()
         streaks.weeks = computeStreaks(weeks, isConsecutiveWeek, isCurrentWeekStart, 0)
 		
 		insightsCache.streaks = streaks
-		uploadInsightsCacheToGReader()
+		if streaks then uploadInsightsCacheToGReader("streaks") end
         return streaks
     end)
 end
@@ -1455,7 +1469,7 @@ function ReadingInsightsPopup:getMonthlyReadingDays(year)
 		
 		insightsCache.monthlyReadingDays = insightsCache.monthlyReadingDays or {}
 		insightsCache.monthlyReadingDays[year] = months
-		uploadInsightsCacheToGReader()
+		if months then uploadInsightsCacheToGReader("MonthlyReadingDays") end
         return months
     end)
 end
@@ -1504,7 +1518,7 @@ function ReadingInsightsPopup:getMonthlyReadingHours(year)
 		
 		insightsCache.monthlyReadingHours = insightsCache.monthlyReadingHours or {}
 		insightsCache.monthlyReadingHours[year] = months
-		uploadInsightsCacheToGReader()
+		if months then uploadInsightsCacheToGReader("MonthlyReadingHours") end
         return months
     end)
 end
@@ -1554,6 +1568,7 @@ function ReadingInsightsPopup:getYearlyStats(year)
 		
 		insightsCache.yearlyStats = insightsCache.yearlyStats or {}
 		insightsCache.yearlyStats[year] = stats
+		if stats then uploadInsightsCacheToGReader("YearlyStats") end
         return stats
     end)
 end
@@ -1575,7 +1590,7 @@ function ReadingInsightsPopup:getYearRange()
         end)
 
 		insightsCache.yearRange = range
-		uploadInsightsCacheToGReader()
+		if range then uploadInsightsCacheToGReader("YearRange") end
         return range
     end)
 end
@@ -1698,7 +1713,7 @@ function ReadingInsightsPopup:showBooksForYear(year)
 end
 
 local function populateEverything(popup_self, year, yearRange)
-	logger.info("READING-INSIGHTS-POPUP: POPULATE EVERYTHING()")
+	logger.info("READING-INSIGHTS-POPUP: POPULATE EVERYTHING CALLED")
 	local a = {
 		yearRange = yearRange,
 		streaks = insightsCache.streaks or popup_self:calculateStreaks(),   
@@ -1707,15 +1722,6 @@ local function populateEverything(popup_self, year, yearRange)
         monthlyReadingHours = insightsCache.monthlyReadingHours and insightsCache.monthlyReadingHours[year] or popup_self:getMonthlyReadingHours(year),
 	}	
 	return a
-end
-
-function refreshDataAndRepaint(popup_self, year, yearRange, loading) 
-	--recalculates data for selected_year and updates widget.
-	
-	logger.info("READING-INSIGHTS-POPUP: REFRESH AND REPAINT")       
-    populateEverything(popup_self, year, yearRange)              
-	popup_self:update(popup_self, year, popup_self.mode)
-	UIManager:close(loading)
 end
 
 local function yearExistsInCache(year)
@@ -1792,14 +1798,8 @@ function ReadingInsightsPopup:init()
         }
     }	
 	
-	local loading = InfoMessage:new{text = "Loading insights for " .. self.selected_year .. "..."}  
     if everything.isPlaceholder then 
-	--calls refreshDataAndRepaint() if widget is showing placeHolderArray data.
-	
-		UIManager:show(loading)
-        UIManager:tickAfterNext(function() 
-			refreshDataAndRepaint(self, self.selected_year, yearRange, loading) 
-        end)  
+		self:onGoToPrevYear(self, self.selected_year) 
     end  
 
     self.dimen = Geom:new{ w = screen_w, h = screen_h }
