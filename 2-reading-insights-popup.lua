@@ -1,6 +1,5 @@
---[ reading insights popup v1.0.42 ] 
---added: defence from infinite loop in calculateStreaks()
---removed: refreshDataAndRepaint()
+--[ reading insights popup v1.0.43 ] 
+--added: total pages read to bookList view
 
 -- ABOUT:
 -- this is a modified version of the 'reading insights popup' userpatch made by u/quanganhdo.
@@ -97,6 +96,8 @@ local PATCH_L10N = {
         ["minutes read"] = "minutes read",
         ["hour read"] = "hour read",
         ["hours read"] = "hours read",
+		["book"] = "book",
+		["books"] = "books",
 		["day"] = "day",
 		["days"] = "days",
 		["daily record"] = "daily record",
@@ -159,6 +160,8 @@ local PATCH_L10N = {
         ["minutes read"] = "phút đã đọc",
         ["hour read"] = "giờ đã đọc",
         ["hours read"] = "giờ đã đọc",
+		["book"] = "book",
+		["books"] = "books",
 		["day"] = "day",
 		["days"] = "days",
 		["daily record"] = "daily record",
@@ -1597,7 +1600,8 @@ end
 
 local function getBooksForPeriod(period_format, period_value)
     local books = {}
-    return withStatsDb(books, function(conn)
+	local pagesTotal = 0
+    local result = withStatsDb(books, function(conn)
         -- Count distinct pages per book for the period (ignore rereads of the same page).
         local sql = string.format([[
             SELECT book.title, book.authors, COUNT(DISTINCT page_stat.page) as pages_read
@@ -1610,16 +1614,18 @@ local function getBooksForPeriod(period_format, period_value)
 
         withStatement(conn, sql, function(stmt)
             for row in stmt:rows() do
+				local pages_curr = tonumber(row[3]) or 0
                 table.insert(books, {
                     title = row[1] or _("Unknown"),
                     authors = row[2] or "",
-                    pages = tonumber(row[3]) or 0,
+                    pages = pages_curr,
                 })
+				pagesTotal = pagesTotal + pages_curr
             end
         end)
-
-        return books
+        return {books, pagesTotal}
     end)
+	return result[1], result[2]
 end
 
 -- Get list of books read in a given month (year_month format: "2025-01")
@@ -1683,18 +1689,20 @@ local function showBooksForPeriod(popup_self, books, empty_text, title)
 
     showBookList(
         title,
-        books
+        books,
+		pages
     )
 end
 
 -- month_label_full should be "January 2025" format
 function ReadingInsightsPopup:showBooksForMonth(year_month, month_label_full)
-    local books = self:getBooksForMonth(year_month)
+    local books, pages = self:getBooksForMonth(year_month)
+	local bookCount = #books
     showBooksForPeriod(
         self,
-        books,
+        books, 
         T(_("No books read in %1"), month_label_full),
-        T(N_("%1 - Book Read (%2)", "%1 - Books Read (%2)", #books), month_label_full, #books)
+        T(("%1 - %2 " .. N_("book", "books", bookCount).." (%3 ".. N_("page", "pages", pages)..")"), month_label_full, bookCount, pages)
     )
 end
 
@@ -1703,12 +1711,13 @@ function ReadingInsightsPopup:getBooksForYear(year)
 end
 
 function ReadingInsightsPopup:showBooksForYear(year)
-    local books = self:getBooksForYear(year)
+    local books, pages = self:getBooksForYear(year)
+	local bookCount = #books
     showBooksForPeriod(
         self,
         books,
         _("No books read in ") .. year,
-        T(N_("%1 - Book Read (%2)", "%1 - Books Read (%2)", #books), year, #books)
+		T(("%1 - %2 " .. N_("book", "books", bookCount).." (%3 ".. N_("page", "pages", pages)..")"), year, bookCount, pages)
     )
 end
 
