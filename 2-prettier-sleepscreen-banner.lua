@@ -2,8 +2,8 @@
 --redesigns the inbuilt 'banner' type sleep screen message to
 --make it look like the kobo lockscreen tag.
 
---[ v1.0.3 ]
---added: fallbacks
+--[ v1.0.4 ]
+--added: border color control
 
 local banner_settings = {	
 						title_text = "%T", 	--configure title_text like you'd configure the inbuilt 
@@ -17,6 +17,7 @@ local banner_settings = {
 						stats_fontFace = "cfont",
 						stats_fontSize = 17,
 						border_size = 1,
+						border_color = 1,	-- 0 = white, 1 = black
 						padding = 15,
 }
 
@@ -132,7 +133,7 @@ function UIManager:show(widget, ...)
 		
 		content_widget = FrameContainer:new{                
 			background = banner_settings.background == 0 and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK,
-			color = banner_settings.background == 1 and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK,
+			color = banner_settings.border_color == 0 and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK,
 			margin = Screen:scaleBySize(banner_settings.margin) or Screen:scaleBySize(10),
 			bordersize = Screen:scaleBySize(banner_settings.border_size) or Screen:scaleBySize(1),
 			padding = Screen:scaleBySize(banner_settings.padding) or Screen:scaleBySize(15),
