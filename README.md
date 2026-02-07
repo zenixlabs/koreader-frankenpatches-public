@@ -14,21 +14,7 @@ basically the koreader equivalent of the 'touch lock' feature in the native kind
 
 INSTALLATION: drop the .lua into the koreader/patches folder and follow the set up instructions inside the file. 
 
-# 2-mini-receipt-frankenpatch.lua
-<img width="600" height="345" alt="528862839-d72382c7-81b7-4266-8930-b127a392e340" src="https://github.com/user-attachments/assets/bf50167a-770b-4eee-bb9f-49ed7b9a9055" />
-
-made this because at one point i found cvs receipt to be a little too big and cluttered.
-
-INSTALLATION: drop the .lua into the koreader/patches folder. set up a gesture to trigger the 'mini receipt' action in 'general' category. 
-
-# 2-mosaicmenu-hide-bookstatusicons.lua
-<img width="674" height="328" alt="before" src="https://github.com/user-attachments/assets/4dac7c05-ba31-4c6c-96a1-d9895b9c2759" />
-
-hides those pesky dogears that show up on the bottom right corner of the book cover in mosaicmenu after the book has been opened.
-
-INSTALLATION: drop the .lua into the koreader/patches folder.
-
-# 2-prettier-sleepscreen-banner.lua
+# 2-kobo-style-sleepscreen-banner.lua
 ![download](https://github.com/user-attachments/assets/ca5821e9-5722-4969-ac52-be7f7431a006)
 
 i wanted a simpler kobo style lockscreen tag, so i made one. 
@@ -53,6 +39,20 @@ also it goes without saying that the patch looks best when 'stretch wallpaper to
 two progress bars side by side. you can choose what progress (chapter or book) to show on each. you can even join them together and mirror one of them so that they essentially look like one regular progress bar that fills from the middle towards the edges. 
 
 INSTALLATION: drop the .lua into the koreader/patches folder. you'll find instructions to customise the patch inside the file.
+
+# 2-mini-receipt-frankenpatch.lua
+<img width="600" height="345" alt="528862839-d72382c7-81b7-4266-8930-b127a392e340" src="https://github.com/user-attachments/assets/bf50167a-770b-4eee-bb9f-49ed7b9a9055" />
+
+made this because at one point i found cvs receipt to be a little too big and cluttered.
+
+INSTALLATION: drop the .lua into the koreader/patches folder. set up a gesture to trigger the 'mini receipt' action in 'general' category. 
+
+# 2-mosaicmenu-hide-bookstatusicons.lua
+<img width="674" height="328" alt="before" src="https://github.com/user-attachments/assets/4dac7c05-ba31-4c6c-96a1-d9895b9c2759" />
+
+hides those pesky dogears that show up on the bottom right corner of the book cover in mosaicmenu after the book has been opened.
+
+INSTALLATION: drop the .lua into the koreader/patches folder.
 
 # 2-reading-insights-popup.lua
 <img width="600" height="800" alt="FileManager_2026-01-28_184220" src="https://github.com/user-attachments/assets/74ac45ab-28f4-4fc6-b190-9d8f74f2a820" />

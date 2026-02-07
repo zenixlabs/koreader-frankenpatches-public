@@ -1,4 +1,4 @@
---[[ 2-prettier-sleepscreen-banner.lua ]]
+--[[ 2-kobo-style-sleepscreen-banner.lua ]]
 --redesigns the inbuilt 'banner' type sleep screen message to
 --make it look like the kobo lockscreen tag.
 
