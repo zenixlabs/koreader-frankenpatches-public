@@ -2,8 +2,8 @@
 --redesigns the inbuilt 'banner' type sleep screen message to
 --make it look like the kobo lockscreen tag.
 
---[ v1.0.4 ]
---added: border color control
+--[ v1.0.5 ]
+--change: handles line breaks better
 
 local banner_settings = {	
 						title_text = "%T", 	--configure title_text like you'd configure the inbuilt 
@@ -29,9 +29,11 @@ local Font = require("ui/font")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local LeftContainer = require("ui/widget/container/leftcontainer")
 local Screen = Device.screen
+local Size = require("ui/size")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local TextWidget = require("ui/widget/textwidget")
 local UIManager = require("ui/uimanager")
+local util = require("util")
 local VerticalGroup = require("ui/widget/verticalgroup")
 
 local screen_w, screen_h = Screen:getWidth(), Screen:getHeight()
@@ -60,14 +62,15 @@ function UIManager:show(widget, ...)
 	
 	--=================================
 	
-	local cus_pos_container, stats_widget, content_widget
+	local cus_pos_container, orig_sleep_widget, content_widget
+	local stats_widgets = VerticalGroup:new{align = "left"}
 	if widget and widget[1] and widget[1][1] and widget[1][1][2] and widget[1][1][2].widget and widget[1][1][2].widget.text then 
 	
 		--intercept the custom position container and child.
 		cus_pos_container = widget[1][1][2]
-		stats_widget = widget[1][1][2].widget
-		local stats_text = stats_widget.text
-		stats_widget:free()
+		orig_sleep_widget = widget[1][1][2].widget
+		local orig_sleep_text = orig_sleep_widget.text
+		orig_sleep_widget:free()
 		
 		local last_file = G_reader_settings:readSetting("lastfile")
 		self.ui = require("apps/reader/readerui").instance or require("apps/filemanager/filemanager").instance
@@ -98,37 +101,40 @@ function UIManager:show(widget, ...)
 				bgcolor = banner_settings.background == 0 and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK,
 			}			
 		end
-		local stats_widget = TextWidget:new{
-			text = stats_text,
-			face = Font:getFace(banner_settings.stats_fontFace, banner_settings.stats_fontSize) or Font:getFace("cfont", 17),
-			alignment = "left",
-			fgcolor = banner_settings.background == 1 and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK,
-			bgcolor = banner_settings.background == 0 and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK,
-		}
-		if stats_widget:getSize().w > max_wid then 
-			stats_widget:free()
-			stats_widget = TextBoxWidget:new{
-				text = stats_text,
+		
+		-- we want to respect line breaks. hence:
+		local stats_segments = util.splitToArray(orig_sleep_text, "\n")
+		for idx, item in pairs(stats_segments) do
+			local wgt = TextWidget:new{
+				padding = 0,
+				text = item,
 				face = Font:getFace(banner_settings.stats_fontFace, banner_settings.stats_fontSize) or Font:getFace("cfont", 17),
-				width = max_wid,
 				alignment = "left",
 				fgcolor = banner_settings.background == 1 and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK,
 				bgcolor = banner_settings.background == 0 and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK,
-			}			
+			}
+			if wgt:getSize().w > max_wid then 
+				wgt:free()
+				wgt = TextBoxWidget:new{
+					--padding = Size.padding.small,
+					text = item,
+					face = Font:getFace(banner_settings.stats_fontFace, banner_settings.stats_fontSize) or Font:getFace("cfont", 17),
+					width = max_wid,
+					alignment = "left",
+					fgcolor = banner_settings.background == 1 and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK,
+					bgcolor = banner_settings.background == 0 and Blitbuffer.COLOR_WHITE or Blitbuffer.COLOR_BLACK,
+				}			
+			end
+			table.insert(stats_widgets, wgt)
 		end
 		local title_dimen = title_widget:getSize()
-		local stats_dimen = stats_widget:getSize()
+		local stats_dimen = stats_widgets:getSize()
 		local wid = math.max(title_dimen.w, stats_dimen.w)
 		
 		content_widget = VerticalGroup:new{
-			LeftContainer:new{
-				dimen = {w = wid, h = title_dimen.h},
-				title_widget,
-			},
-			LeftContainer:new{
-				dimen = {w = wid, h = stats_dimen.h},
-				stats_widget,
-			},				
+			align = "left",
+			title_widget,
+			stats_widgets,			
 		}
 		
 		content_widget = FrameContainer:new{                
