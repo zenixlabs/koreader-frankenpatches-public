@@ -2,8 +2,8 @@
 --redesigns the inbuilt 'banner' type sleep screen message to
 --make it look like the kobo lockscreen tag.
 
---[ v1.0.5 ]
---change: handles line breaks better
+--[ v1.0.6 ]
+--change: respects 'ignore cover'
 
 local banner_settings = {	
 						title_text = "%T", 	--configure title_text like you'd configure the inbuilt 
@@ -149,7 +149,6 @@ function UIManager:show(widget, ...)
 		-- move custom position cont. to the left edge and replace child.
 		cus_pos_container.horizontal_position = 0
 		cus_pos_container.widget = content_widget
-
-		return og_uiMan_show(self, widget, ...)
 	end
+	return og_uiMan_show(self, widget, ...)
 end
