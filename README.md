@@ -15,10 +15,11 @@ basically the koreader equivalent of the 'touch lock' feature in the native kind
 INSTALLATION: drop the .lua into the koreader/patches folder and follow the set up instructions inside the file. 
 
 # 2-kobo-style-sleepscreen-banner.lua
-![download](https://github.com/user-attachments/assets/ca5821e9-5722-4969-ac52-be7f7431a006)
+![download](https://github.com/user-attachments/assets/ca5821e9-5722-4969-ac52-be7f7431a006) 
+![93746](https://github.com/user-attachments/assets/1d43d728-ecd2-4911-8b73-6805cb3dac6a)
 
 i wanted a simpler kobo style lockscreen tag, so i made one. 
-this is a direct redesign of the inbuilt 'banner' style sleep screen message. meaning i simply gave it a new look. no functional differences other than the extra data field.
+this is a direct redesign of the inbuilt 'banner' style sleep screen message. i gave it a new design and added the option to show a random highlight from the current book. 
 
 INSTALLATION:
 drop the .lua file into koreader/patches directory and restart koreader.
