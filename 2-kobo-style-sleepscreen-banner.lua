@@ -2,8 +2,8 @@
 --redesigns the inbuilt 'banner' type sleep screen message to
 --make it look like the kobo lockscreen tag.
 
---[ v2.0 ]
---release candidate
+--[ v2.0.1 ]
+--minor code restructure
 
 --CREDITS
 --this version was written in collab with discord user @sandcastles.
@@ -223,6 +223,16 @@ function UIManager:show(widget, ...)
 			screensaver_type ~= "document_cover" then			
 		return og_uiMan_show(self, widget, ...)
 	end		
+	
+	local txtBoxWgtFound = widget and 
+								widget[1] and  --screensaver wgt
+								widget[1][1] and  -- overlap group
+								widget[1][1][2] and --custom pos. container
+								widget[1][1][2].widget and --textbox widget
+								widget[1][1][2].widget.text
+	if not txtBoxWgtFound then 
+		return og_uiMan_show(self, widget, ...)
+	end
 	--=================================
 	
 	local last_file = G_reader_settings:readSetting("lastfile")
@@ -273,227 +283,226 @@ function UIManager:show(widget, ...)
 						HL_SETT.highlight_fontFace, 
 						HL_SETT.highlight_fontSize) or 
 						Font:getFace("NotoSerif-Italic.ttf", 16)					
-	}
+	}	
+	
+	--intercept the custom position container and child.
 	
 	local cus_pos_container, orig_sleep_widget, content_widget
-	if widget and widget[1] and widget[1][1] and widget[1][1][2] and 
-				widget[1][1][2].widget and widget[1][1][2].widget.text then 
 	
-		--intercept the custom position container and child.
-		cus_pos_container = widget[1][1][2]
-		orig_sleep_widget = widget[1][1][2].widget
-		local orig_sleep_text = orig_sleep_widget.text
-		orig_sleep_widget:free()
-		
-		local highlightCount, highlightEnabled, highlights_list
-		
-		if HL_SETT.showRandomHighlight then
-			local all_annotations = Sidecar:readSetting("annotations") or {}
-			highlights_list = {}
+	cus_pos_container = widget[1][1][2]
+	orig_sleep_widget = widget[1][1][2].widget
+	local orig_sleep_text = orig_sleep_widget.text
+	orig_sleep_widget:free()
+	
+	local highlightCount, highlightEnabled, highlights_list
+	
+	if HL_SETT.showRandomHighlight then
+		local all_annotations = Sidecar:readSetting("annotations") or {}
+		highlights_list = {}
 
-			local allowed = HL_SETT.allowed_hl_styles
+		local allowed = HL_SETT.allowed_hl_styles
 
-			for _, item in ipairs(all_annotations) do
-				if item.text
-				   and item.drawer
-				   and allowed[item.drawer] then
-					local trimmed = util.trim(item.text)
-					if trimmed ~= "" then
-						table.insert(highlights_list, item)
-					end
+		for _, item in ipairs(all_annotations) do
+			if item.text
+			   and item.drawer
+			   and allowed[item.drawer] then
+				local trimmed = util.trim(item.text)
+				if trimmed ~= "" then
+					table.insert(highlights_list, item)
 				end
 			end
-
-			highlightCount = #highlights_list
-			highlightEnabled = highlightCount > 0
-		end
-		
-		local hl_footer_enabled = highlightEnabled and 
-									HL_SETT.showHighlightFooter and 
-									HL_SETT.hl_footer_text and 
-									util.trim(HL_SETT.hl_footer_text) ~= ""
-		
-		local max_wid
-		if not highlightEnabled then
-			max_wid = B_SETT.max_width_hl_off and
-						B_SETT.max_width_hl_off >= 20 and 
-						B_SETT.max_width_hl_off <= 100 and
-						(B_SETT.max_width_hl_off/100 * screen_w) or 
-						screen_w * 0.4
-			max_wid = max_wid - overflow_w
-		else
-			max_wid = B_SETT.max_width_hl_on and
-						B_SETT.max_width_hl_on >= 20 and 
-						B_SETT.max_width_hl_on <= 100 and 
-						(B_SETT.max_width_hl_on/100 * screen_w) or 
-						screen_w * 0.6
-			max_wid = max_wid - overflow_w_hl
-		end			
-		local max_height = B_SETT.max_height >= 20 and
-							B_SETT.max_height <= 100 and
-							(B_SETT.max_height/100 * screen_h) or 
-							screen_h * 0.5
-		max_height = max_height - overflow_h							
-		
-		--TITLE WIDGET
-		local title_text
-		
-		if self.ui and self.ui.document and self.ui.toc and self.ui.bookinfo then
-			title_text = self.ui and self.ui.bookinfo:expandString(B_SETT.title_text, last_file) or "N/A"
-		else
-			title_text = BookInfo:expandString(B_SETT.title_text, last_file) or "N/A"
-		end
-		
-		local title_widget = buildTextField(
-								title_text, 
-								font_.title_font, 
-								max_height, 
-								max_wid, 
-								true
-		)
-		local title_dimen = title_widget:getSize()					
-		
-		--STATS WIDGET
-		local stats_widget = buildTextField(
-								orig_sleep_text, 
-								font_.stats_font, 
-								max_height - title_dimen.h, 
-								max_wid
-		)
-		local stats_dimen = stats_widget:getSize()
-		
-		--HIGHLIGHTS WIDGET
-		local highlight_widget
-		
-		if highlightEnabled then 
-			local random_highlight, random_highlight_index
-			
-			if highlightCount == 1 then
-				random_highlight = highlights_list and highlights_list[1] and 
-									highlights_list[1].text or ""
-				random_highlight_index = 1
-			else
-				random_highlight_index = math.random(highlightCount)
-				
-				--get a diff random highlight from prev time.
-				while random_highlight_index == cached_random_highlight_index do 
-					random_highlight_index = math.random(highlightCount)
-				end
-				cached_random_highlight_index = random_highlight_index
-				random_highlight = highlights_list[random_highlight_index] and 
-									highlights_list[random_highlight_index].text or ""
-			end
-			
-			random_highlight = util.trim(random_highlight)
-			random_highlight = HL_SETT.add_quotations and addQuotesIfReq(random_highlight) or 
-								random_highlight
-			
-			local hl_footer_widget
-			local footer_color = B_SETT.background == 0 and 
-									Bb.COLOR_GRAY_4 or 
-									Bb.COLOR_GRAY_9
-			
-			if hl_footer_enabled then
-				local hyphen_wid = buildTextField(
-										"— ", 
-										font_.footer_font,
-										max_height, 
-										max_wid, 
-										true, 
-										false, 
-										footer_color
-				)						
-				hl_footer_widget = buildTextField(
-										parseFooterText(HL_SETT.hl_footer_text , random_highlight_index), 
-										font_.footer_font, 
-										max_height - title_dimen.h - stats_dimen.h, 
-										max_wid - hyphen_wid:getSize().w, 
-										false, 
-										false, 
-										footer_color
-				)						
-				hl_footer_widget = HorizontalGroup:new{
-										align = "top",
-										hyphen_wid,
-										hl_footer_widget
-				}
-				hl_footer_widget = VerticalGroup:new{
-									VerticalSpan:new{width = dimen_.footer_clearance},
-									hl_footer_widget,
-				}
-			end
-			
-			local hl_wgt_max_h = hl_footer_enabled and 
-							(max_height - title_dimen.h - stats_dimen.h - hl_footer_widget:getSize().h) or 
-							(max_height - title_dimen.h - stats_dimen.h)
-			highlight_widget = buildTextField(
-									random_highlight, 
-									font_.highlight_font, 
-									hl_wgt_max_h, 
-									max_wid,
-									true, 
-									true
-			)								
-			local accent_height = highlight_widget:getSize().h
-			
-			-- if hl_footer_enabled and hl_footer_widget then
-				-- highlight_widget = VerticalGroup:new{
-						-- align = "left",
-						-- highlight_widget,
-						-- hl_footer_widget,
-				-- }
-			-- end
-			
-			if HL_SETT.show_accent_line then 			
-				local highlight_accent = LineWidget:new{  
-										background = footer_color,   
-										dimen =  Geom:new{  
-											w = dimen_.line_width,   
-											h = accent_height, 
-										},  
-				}
-				highlight_widget = HorizontalGroup:new{
-					align = "top",
-					highlight_accent,
-					HorizontalSpan:new{width = dimen_.line_clearance},
-					highlight_widget,
-				}
-			end
-				
-			if hl_footer_enabled and hl_footer_widget then
-				highlight_widget = VerticalGroup:new{
-						align = "left",
-						highlight_widget,
-						hl_footer_widget,
-				}
-			end
 		end
 
-		content_widget = VerticalGroup:new{
-			align = "left",
-			title_widget,
-			stats_widget,			
-		}
-		
-		if highlightEnabled and highlight_widget then
-			table.insert(content_widget, VerticalSpan:new{width = dimen_.hl_wgt_clearance})
-			table.insert(content_widget, highlight_widget)
-		end
-		
-		content_widget = FrameContainer:new{                
-			background = B_SETT.background == 0 and Bb.COLOR_WHITE or 
-						 Bb.COLOR_BLACK,
-			color = B_SETT.border_color == 0 and Bb.COLOR_WHITE or 
-					Bb.COLOR_BLACK,
-			margin = dimen_.margin,
-			bordersize = dimen_.border_size,
-			padding = dimen_.padding,
-			content_widget,
-		}		
-		
-		-- move custom position cont. to the left edge and replace child.
-		cus_pos_container.horizontal_position = 0
-		cus_pos_container.widget = content_widget
+		highlightCount = #highlights_list
+		highlightEnabled = highlightCount > 0
 	end
+	
+	local hl_footer_enabled = highlightEnabled and 
+								HL_SETT.showHighlightFooter and 
+								HL_SETT.hl_footer_text and 
+								util.trim(HL_SETT.hl_footer_text) ~= ""
+	
+	local max_wid
+	if not highlightEnabled then
+		max_wid = B_SETT.max_width_hl_off and
+					B_SETT.max_width_hl_off >= 20 and 
+					B_SETT.max_width_hl_off <= 100 and
+					(B_SETT.max_width_hl_off/100 * screen_w) or 
+					screen_w * 0.4
+		max_wid = max_wid - overflow_w
+	else
+		max_wid = B_SETT.max_width_hl_on and
+					B_SETT.max_width_hl_on >= 20 and 
+					B_SETT.max_width_hl_on <= 100 and 
+					(B_SETT.max_width_hl_on/100 * screen_w) or 
+					screen_w * 0.6
+		max_wid = max_wid - overflow_w_hl
+	end			
+	local max_height = B_SETT.max_height >= 20 and
+						B_SETT.max_height <= 100 and
+						(B_SETT.max_height/100 * screen_h) or 
+						screen_h * 0.5
+	max_height = max_height - overflow_h							
+	
+	--TITLE WIDGET
+	local title_text
+	
+	if self.ui and self.ui.document and self.ui.toc and self.ui.bookinfo then
+		title_text = self.ui and self.ui.bookinfo:expandString(B_SETT.title_text, last_file) or "N/A"
+	else
+		title_text = BookInfo:expandString(B_SETT.title_text, last_file) or "N/A"
+	end
+	
+	local title_widget = buildTextField(
+							title_text, 
+							font_.title_font, 
+							max_height, 
+							max_wid, 
+							true
+	)
+	local title_dimen = title_widget:getSize()					
+	
+	--STATS WIDGET
+	local stats_widget = buildTextField(
+							orig_sleep_text, 
+							font_.stats_font, 
+							max_height - title_dimen.h, 
+							max_wid
+	)
+	local stats_dimen = stats_widget:getSize()
+	
+	--HIGHLIGHTS WIDGET
+	local highlight_widget
+	
+	if highlightEnabled then 
+		local random_highlight, random_highlight_index
+		
+		if highlightCount == 1 then
+			random_highlight = highlights_list and highlights_list[1] and 
+								highlights_list[1].text or ""
+			random_highlight_index = 1
+		else
+			random_highlight_index = math.random(highlightCount)
+			
+			--get a diff random highlight from prev time.
+			while random_highlight_index == cached_random_highlight_index do 
+				random_highlight_index = math.random(highlightCount)
+			end
+			cached_random_highlight_index = random_highlight_index
+			random_highlight = highlights_list[random_highlight_index] and 
+								highlights_list[random_highlight_index].text or ""
+		end
+		
+		random_highlight = util.trim(random_highlight)
+		random_highlight = HL_SETT.add_quotations and addQuotesIfReq(random_highlight) or 
+							random_highlight
+		
+		local hl_footer_widget
+		local footer_color = B_SETT.background == 0 and 
+								Bb.COLOR_GRAY_4 or 
+								Bb.COLOR_GRAY_9
+		
+		if hl_footer_enabled then
+			local hyphen_wid = buildTextField(
+									"— ", 
+									font_.footer_font,
+									max_height, 
+									max_wid, 
+									true, 
+									false, 
+									footer_color
+			)						
+			hl_footer_widget = buildTextField(
+									parseFooterText(HL_SETT.hl_footer_text , random_highlight_index), 
+									font_.footer_font, 
+									max_height - title_dimen.h - stats_dimen.h, 
+									max_wid - hyphen_wid:getSize().w, 
+									false, 
+									false, 
+									footer_color
+			)						
+			hl_footer_widget = HorizontalGroup:new{
+									align = "top",
+									hyphen_wid,
+									hl_footer_widget
+			}
+			hl_footer_widget = VerticalGroup:new{
+								VerticalSpan:new{width = dimen_.footer_clearance},
+								hl_footer_widget,
+			}
+		end
+		
+		local hl_wgt_max_h = hl_footer_enabled and 
+						(max_height - title_dimen.h - stats_dimen.h - hl_footer_widget:getSize().h) or 
+						(max_height - title_dimen.h - stats_dimen.h)
+		highlight_widget = buildTextField(
+								random_highlight, 
+								font_.highlight_font, 
+								hl_wgt_max_h, 
+								max_wid,
+								true, 
+								true
+		)								
+		local accent_height = highlight_widget:getSize().h
+		
+		-- if hl_footer_enabled and hl_footer_widget then
+			-- highlight_widget = VerticalGroup:new{
+					-- align = "left",
+					-- highlight_widget,
+					-- hl_footer_widget,
+			-- }
+		-- end
+		
+		if HL_SETT.show_accent_line then 			
+			local highlight_accent = LineWidget:new{  
+									background = footer_color,   
+									dimen =  Geom:new{  
+										w = dimen_.line_width,   
+										h = accent_height, 
+									},  
+			}
+			highlight_widget = HorizontalGroup:new{
+				align = "top",
+				highlight_accent,
+				HorizontalSpan:new{width = dimen_.line_clearance},
+				highlight_widget,
+			}
+		end
+			
+		if hl_footer_enabled and hl_footer_widget then
+			highlight_widget = VerticalGroup:new{
+					align = "left",
+					highlight_widget,
+					hl_footer_widget,
+			}
+		end
+	end
+
+	content_widget = VerticalGroup:new{
+		align = "left",
+		title_widget,
+		stats_widget,			
+	}
+	
+	if highlightEnabled and highlight_widget then
+		table.insert(content_widget, VerticalSpan:new{width = dimen_.hl_wgt_clearance})
+		table.insert(content_widget, highlight_widget)
+	end
+	
+	content_widget = FrameContainer:new{                
+		background = B_SETT.background == 0 and Bb.COLOR_WHITE or 
+					 Bb.COLOR_BLACK,
+		color = B_SETT.border_color == 0 and Bb.COLOR_WHITE or 
+				Bb.COLOR_BLACK,
+		margin = dimen_.margin,
+		bordersize = dimen_.border_size,
+		padding = dimen_.padding,
+		content_widget,
+	}		
+	
+	-- move custom position cont. to the left edge and replace child.
+	cus_pos_container.horizontal_position = 0
+	cus_pos_container.widget = content_widget
+	
 	return og_uiMan_show(self, widget, ...)
 end
