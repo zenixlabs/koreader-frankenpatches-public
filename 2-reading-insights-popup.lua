@@ -1,5 +1,5 @@
---[ reading insights popup v1.0.43 ] 
---added: total pages read to bookList view
+--[ reading insights popup v1.0.44 ] 
+--cache writes to separate lua file
 
 -- ABOUT:
 -- this is a modified version of the 'reading insights popup' userpatch made by u/quanganhdo.
@@ -47,6 +47,7 @@ local IconWidget = require("ui/widget/iconwidget")
 local InfoMessage = require("ui/widget/infomessage")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local LeftContainer = require("ui/widget/container/leftcontainer")
+local LuaSettings = require("luasettings")
 local logger = require("logger")
 local LineWidget = require("ui/widget/linewidget")
 local ReaderUI = require("apps/reader/readerui")
@@ -269,16 +270,20 @@ local function saveInsightsMode(mode)
         G_reader_settings:saveSetting(INSIGHTS_MODE_KEY, mode)
     end
 end
+--ON DISK
+
+local database_file = DataStorage:getDataDir() .. "/reading_insights_data.lua"
+local ReadingInsightsDatabase = LuaSettings:open(database_file)
 
 --CACHE
-local insightsCache = G_reader_settings:readSetting("readingInsights_cache") or {
+local insightsCache = ReadingInsightsDatabase:readSetting("readingInsights_cache") or {
 				streaks = nil,
 				yearRange = nil,
 				yearlyStats = nil,
 				monthlyReadingDays = nil,
 				monthlyReadingHours = nil,
 }
-local cache_timestamps = G_reader_settings:readSetting("readingInsights_cacheTimestamps") or { 
+local cache_timestamps = ReadingInsightsDatabase:readSetting("readingInsights_cacheTimestamps") or { 
 				partialClear = 1262304000,	-- last local db update aka cache partially cleared (pulled from lfs)
 				fullClear = 1262304000, 	-- cached stats sync timestamp aka cache fully cleared (recorded via stats plugin patch)
 				statsSynced = 1262304000,	-- latest stats sync timestamp (recorded via stats plugin patch)
@@ -286,20 +291,22 @@ local cache_timestamps = G_reader_settings:readSetting("readingInsights_cacheTim
 											-- manage refreshOnlyOncePerDay)
 }
 local cachedLayout = nil
-local function uploadCacheTimestampsTogreader()
-	G_reader_settings:saveSetting("readingInsights_cacheTimestamps", cache_timestamps)
+local function writeCacheTimestampsToDisk()
+	ReadingInsightsDatabase:saveSetting("readingInsights_cacheTimestamps", cache_timestamps)
+	ReadingInsightsDatabase:flush()
 end
-local function uploadInsightsCacheToGReader(item)
+local function writeInsightsCacheToDisk(item)
 	logger.info("READING-INSIGHTS-POPUP: UPLOADING CACHE: ", item)
-	G_reader_settings:saveSetting("readingInsights_cache", insightsCache)
+	ReadingInsightsDatabase:saveSetting("readingInsights_cache", insightsCache)
+	ReadingInsightsDatabase:flush()
 end
 local function set_cache_partialClear_timestamp(timestamp)
 	cache_timestamps.partialClear = timestamp
-	uploadCacheTimestampsTogreader()
+	writeCacheTimestampsToDisk()
 end
 local function set_cache_fullClear_timestamp(timestamp)
 	cache_timestamps.fullClear = timestamp
-	uploadCacheTimestampsTogreader()
+	writeCacheTimestampsToDisk()
 end
 local function getDbModTime() 
 	--finds out when stats sql was last modified.
@@ -1433,7 +1440,7 @@ function ReadingInsightsPopup:calculateStreaks()
         streaks.weeks = computeStreaks(weeks, isConsecutiveWeek, isCurrentWeekStart, 0)
 		
 		insightsCache.streaks = streaks
-		if streaks then uploadInsightsCacheToGReader("streaks") end
+		if streaks then writeInsightsCacheToDisk("streaks") end
         return streaks
     end)
 end
@@ -1472,7 +1479,7 @@ function ReadingInsightsPopup:getMonthlyReadingDays(year)
 		
 		insightsCache.monthlyReadingDays = insightsCache.monthlyReadingDays or {}
 		insightsCache.monthlyReadingDays[year] = months
-		if months then uploadInsightsCacheToGReader("MonthlyReadingDays") end
+		if months then writeInsightsCacheToDisk("MonthlyReadingDays") end
         return months
     end)
 end
@@ -1521,7 +1528,7 @@ function ReadingInsightsPopup:getMonthlyReadingHours(year)
 		
 		insightsCache.monthlyReadingHours = insightsCache.monthlyReadingHours or {}
 		insightsCache.monthlyReadingHours[year] = months
-		if months then uploadInsightsCacheToGReader("MonthlyReadingHours") end
+		if months then writeInsightsCacheToDisk("MonthlyReadingHours") end
         return months
     end)
 end
@@ -1571,7 +1578,7 @@ function ReadingInsightsPopup:getYearlyStats(year)
 		
 		insightsCache.yearlyStats = insightsCache.yearlyStats or {}
 		insightsCache.yearlyStats[year] = stats
-		if stats then uploadInsightsCacheToGReader("YearlyStats") end
+		if stats then writeInsightsCacheToDisk("YearlyStats") end
         return stats
     end)
 end
@@ -1593,7 +1600,7 @@ function ReadingInsightsPopup:getYearRange()
         end)
 
 		insightsCache.yearRange = range
-		if range then uploadInsightsCacheToGReader("YearRange") end
+		if range then writeInsightsCacheToDisk("YearRange") end
         return range
     end)
 end
@@ -1933,14 +1940,17 @@ function ReadingInsightsPopup:onShow()
     return true
 end
 
+
 function ReadingInsightsPopup:onTapClose(arg, ges)
-    if ges.pos:notIntersectWith(self.popup_frame.dimen) then  	
+    if ges.pos:notIntersectWith(self.popup_frame.dimen) then  
 		UIManager:close(self)
 	end
     return true
 end
 
 function ReadingInsightsPopup:onCloseWidget()
+	G_reader_settings:delSetting("readingInsights_cache")
+	G_reader_settings:delSetting("readingInsights_cacheTimestamps")
     UIManager:setDirty(nil, "ui")
 end
 
@@ -1970,7 +1980,7 @@ local function saveLastSyncTimestamp(plugin)
 	function plugin:onSyncBookStats()
 		local now = os.time()
 		cache_timestamps.statsSynced = now
-		uploadCacheTimestampsTogreader()		
+		writeCacheTimestampsToDisk()		
 		return original_plugin_onSyncBookStats(self)		
 	end
        
