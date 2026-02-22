@@ -1,6 +1,8 @@
---[[ mini receipt v1.0.7 ]]
---better baseline matching for book progress
---removed leading zero for book progress
+--[[ 2-mini-receipt-frankenpatch.lua ]]
+--little box with reading progress markers that can be summoned with a gesture
+
+--[ v1.0.8 ]
+--menu text
 
 local Blitbuffer = require("ffi/blitbuffer")
 local CenterContainer = require("ui/widget/container/centercontainer")
@@ -48,7 +50,7 @@ end
 -- ADD TO MENU
 
 local cvsMenu = {  
-        text = _("mini receipt"),  
+        text = _("Mini Receipt"),  
         sorting_hint = "tools",  
         sub_item_table = {  
 			{  
@@ -907,7 +909,7 @@ Dispatcher:registerAction(
     {
         category = "none",
         event = "QuickLook",
-        title = _("mini receipt"),
+        title = _("Mini Receipt"),
         general = true
     }
 )
