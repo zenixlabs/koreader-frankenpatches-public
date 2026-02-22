@@ -1,5 +1,8 @@
---[[ cvs receipt v2.3 #11 - public ]]
--- infinite loop protection in addToMainMenu
+--[[ 2-cvs-receipt-frankenpatch.lua ]]
+--box with reading progress markers that can be summoned with a gesture
+
+--[ v2.3.14 -public ]
+--menu text
 
 local Blitbuffer = require("ffi/blitbuffer")
 local bookCompleted = false
@@ -53,7 +56,7 @@ end
 -- ADD TO MENU
 
 local cvsMenu = {  
-        text = _("cvs receipt"),  
+        text = _("CVS Receipt"),  
         sorting_hint = "tools",  
         sub_item_table = {  
             {  
@@ -942,7 +945,7 @@ Dispatcher:registerAction(
     {
         category = "none",
         event = "QuickLook",
-        title = _("cvs receipt"),
+        title = _("CVS Receipt"),
         general = true
     }
 )
