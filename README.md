@@ -58,6 +58,8 @@ INSTALLATION: drop the .lua into the koreader/patches folder. you'll find instru
 # 2-reading-insights-popup.lua
 <img width="600" height="800" alt="FileManager_2026-01-28_184220" src="https://github.com/user-attachments/assets/74ac45ab-28f4-4fc6-b190-9d8f74f2a820" />
 
+CREDITS: this is a modified version of the 'reading insights popup' userpatch made by @quanganhdo  (https://github.com/quanganhdo/koreader-user-patches/).
+
 a window that displays your reading streaks, monthly reading hours, monthly reading days, pages read in a year etc.
 
 INSTALLATION:  drop the .lua into the koreader/patches folder. set up a gesture for the 'Reading statistics: reading insights' action in 'General' category.
