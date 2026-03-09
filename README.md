@@ -48,6 +48,13 @@ hides those pesky dogears that show up on the bottom right corner of the book co
 
 INSTALLATION: drop the .lua into the koreader/patches folder.
 
+# 2-pageno-in-subtitle.lua
+<img width="600" height="121" alt="FileManager_2026-03-09_160931" src="https://github.com/user-attachments/assets/0829d835-69ab-4e0a-a3ce-9d34e86a16a6" />
+
+appends 'Page x of y' to the folder name in filemanager view. very helpful if you're using the 'hide pagination' type patches that have been popular recently.
+
+INSTALLATION: drop the .lua into the koreader/patches folder and restart.
+
 # 2-progress-bar-twins.lua
 ![511379238-d4bd1992-8928-40b1-b30c-6fda269f5115](https://github.com/user-attachments/assets/98ecca69-fbe8-42c7-87ad-609f8c724cb9)
 
