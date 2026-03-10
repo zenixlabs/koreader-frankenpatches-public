@@ -2,8 +2,8 @@
 --redesigns the inbuilt 'banner' type sleep screen message to
 --make it look like the kobo lockscreen tag.
 
---[ v2.0.1 ]
---minor code restructure
+--[ v2.0.2 ]
+--crash guard when uiman:show() called w/o widget
 
 --CREDITS
 --this version was written in collab with discord user @sandcastles.
@@ -206,7 +206,7 @@ function UIManager:show(widget, ...)
 	-- isn't 'book cover' or 'custom image' or if sleep screen message type
 	-- isn't 'banner', we do not intercept. 
 	
-	if widget.name ~= "ScreenSaver" then 
+	if not widget or widget.name ~= "ScreenSaver" then 
 		return og_uiMan_show(self, widget, ...)
 	end
 	
