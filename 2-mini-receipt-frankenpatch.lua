@@ -1,8 +1,9 @@
 --[[ 2-mini-receipt-frankenpatch.lua ]]
 --little box with reading progress markers that can be summoned with a gesture
 
---[ v1.0.8 ]
---menu text
+--[ v1.1 ]
+--chapter index
+--current book metrics in 'today' field
 
 local Blitbuffer = require("ffi/blitbuffer")
 local CenterContainer = require("ui/widget/container/centercontainer")
@@ -38,66 +39,117 @@ local Widget = require("ui/widget/widget")
 local _ = require("gettext")
 local N_ = _.ngettext
 
--- SWITCHES
 local bookCompleted = false
-local showBookCompleteWindow, altFontEnabled, brtAuthorsEnabled = false, false, false
-if G_reader_settings and G_reader_settings.isTrue then 
-	showBookCompleteWindow = G_reader_settings:isTrue("cvs_rct_book_complete_window")
-	altFontEnabled = G_reader_settings:isTrue("cvs_rct_altFont")
-	brtAuthorsEnabled = G_reader_settings:isTrue("cvs_rct_brtAuthors")
+
+--GET SETTINGS
+
+local defaults = {
+		book_cmpl_wnd = 1,
+		serif = 1,
+		brt_authors = 1,
+		ch_index = 0,
+		today_curr_book = 0,
+}
+
+local MR_SETT = G_reader_settings:readSetting("mini_rct_sett", defaults)
+
+for k, v in pairs(defaults) do
+	if not MR_SETT[k] then 
+		MR_SETT[k] = defaults[k]
+	end
+end
+
+local function writeSettToDisk()
+	G_reader_settings:saveSetting("mini_rct_sett", MR_SETT)
+end
+
+local function flipSett(value)
+	return value == 0 and 1 or 0
 end
 
 -- ADD TO MENU
 
-local cvsMenu = {  
+local mini_menu = {  
         text = _("Mini Receipt"),  
         sorting_hint = "tools",  
         sub_item_table = {  
 			{  
+                text = _("(long press any item for more info)"),
+				enabled_func = function () return false end,
+            }, 		
+			{  
                 text = _("show 'book complete' window"),
-				help_text = _("a little window that pops up when you flip past the last page of a book. shows time read, starting date and highlight count for current book.\n\n(set Menu>gear icon>Document>End of document action to 'Do nothing' for best results)."),
+				help_text = "a little window that pops up when you "..
+							"flip past the last page of a book.\n\n"..
+							"(set Menu > gear icon > Document > End of document action "..
+							"to 'Do nothing' for best results).",
                 checked_func = function()  
-                    return G_reader_settings:isTrue("cvs_rct_book_complete_window")  
+                    return MR_SETT.book_cmpl_wnd == 1 
                 end,  
                 callback = function()  
-					G_reader_settings:flipNilOrFalse("cvs_rct_book_complete_window")  
-					showBookCompleteWindow = G_reader_settings:isTrue("cvs_rct_book_complete_window") 			
+					MR_SETT.book_cmpl_wnd = flipSett(MR_SETT.book_cmpl_wnd)
+					writeSettToDisk()
                 end,  
             }, 
 			{  
-                text = _("show author(s) in 'books read today' window."),  
-				help_text = _("shows or hides authors in 'book complete' window."),
+                text = _("show authors in 'books read today' window."),  
+				help_text = _("shows or hides authors in 'books read today' window."),
                 checked_func = function()  
-                    return G_reader_settings:isTrue("cvs_rct_brtAuthors")  
+                    return MR_SETT.brt_authors == 1
                 end,  
                 callback = function()  
-                    G_reader_settings:flipNilOrFalse("cvs_rct_brtAuthors")  
-					brtAuthorsEnabled = G_reader_settings:isTrue("cvs_rct_brtAuthors")
+					MR_SETT.brt_authors = flipSett(MR_SETT.brt_authors)
+					writeSettToDisk()
                 end,  
             },			
 			{  
-                text = _("serif font"),  		
-				help_text = _("toggles between NotoSans and NotoSerif fonts."),
+                text = _("show chapter index"),  		
+				help_text = "CHECKED: chapter field label says 'chapter x of y'\n\n".. 
+							"UNCHECKED: chapter field label says 'chapter'.",
                 checked_func = function()  
-                    return G_reader_settings:isTrue("cvs_rct_altFont")  
+                    return MR_SETT.ch_index == 1
                 end,  
                 callback = function()  
-                    G_reader_settings:flipNilOrFalse("cvs_rct_altFont")  
-					altFontEnabled = G_reader_settings:isTrue("cvs_rct_altFont") 			
+					MR_SETT.ch_index = flipSett(MR_SETT.ch_index)
+					writeSettToDisk()		
                 end,  
-            },  
+            }, 
+			{  
+                text = _("show current book data in 'today'"),  		
+				help_text = "CHECKED: 'today' field shows metrics from current book.\n\n"..
+							"UNCHECKED: 'today' field shows metrics across all books read today.",
+                checked_func = function()  
+                    return MR_SETT.today_curr_book == 1
+                end,  
+                callback = function()  
+					MR_SETT.today_curr_book = flipSett(MR_SETT.today_curr_book)
+					writeSettToDisk()			
+                end,  
+            },  			
+			{  
+                text = _("serif font"),  		
+				help_text = "CHECKED: all widgets use 'Noto Serif' font.\n\n".. 
+							"UNCHECKED: all widgets use 'Noto Sans' font.",
+                checked_func = function()  
+                    return MR_SETT.serif == 1  
+                end,  
+                callback = function()  
+					MR_SETT.serif = flipSett(MR_SETT.serif)
+					writeSettToDisk()		
+                end,  
+            },  			
         },  
     }  
 
-if not ReaderFooter._cvs_receipt_hooked then
-	local orig_ReaderFooter_addToMainMenu_cvs = ReaderFooter.addToMainMenu
+if not ReaderFooter._mini_receipt_hooked then
+	local og_footer_addToMenu = ReaderFooter.addToMainMenu
 	ReaderFooter.addToMainMenu = function(self, menu_items)
-		if orig_ReaderFooter_addToMainMenu_cvs then
-			orig_ReaderFooter_addToMainMenu_cvs(self, menu_items)
+		if og_footer_addToMenu then
+			og_footer_addToMenu(self, menu_items)
 		end
-		menu_items.cvs_rct_menu = cvsMenu
+		menu_items.cvs_rct_menu = mini_menu
 	end 
-	ReaderFooter._cvs_receipt_hooked = true
+	ReaderFooter._mini_receipt_hooked = true
 end
 
 local quicklookwindow =
@@ -109,7 +161,9 @@ local quicklookwindow =
 function quicklookwindow:init()
 	
     local ReaderStatistics = self.ui.statistics
-    local statsEnabled = ReaderStatistics and ReaderStatistics.settings and ReaderStatistics.settings.is_enabled
+    local statsEnabled = ReaderStatistics and 
+							ReaderStatistics.settings and 
+							ReaderStatistics.settings.is_enabled
     local ReaderToc = self.ui.toc	
 
     -- BOOK INFO
@@ -181,13 +235,11 @@ function quicklookwindow:init()
 
     local screen_width = Screen:getWidth()
     local screen_height = Screen:getHeight()
-    local w_width = math.floor(screen_width / 2)
-    if screen_width > screen_height then
-        w_width = math.floor(w_width * screen_height / screen_width)
-    end
+    local w_width = math.floor(math.min(screen_height, screen_width) / 2)
 
-    -- FONT AND PADDING
-	local mainFontFace = altFontEnabled and "NotoSerif" or "NotoSans"
+    -- FONT 
+	
+	local mainFontFace = MR_SETT.serif == 1 and "NotoSerif" or "NotoSans"
     local w_font = {
         face = {
             reg = mainFontFace .. "-Regular.ttf",
@@ -202,7 +254,9 @@ function quicklookwindow:init()
             lightGray = Blitbuffer.COLOR_GRAY_4
         }
     }
-
+	
+	-- PADDING
+	
     local w_padding = {
         internal = Screen:scaleBySize(7),
         external = Screen:scaleBySize(16)
@@ -210,8 +264,11 @@ function quicklookwindow:init()
 
     -- HELPER FUNCTIONS
 
-    local function secsToTimestring(secs, isCompact) -- seconds to 'x hrs y mins' format
-        local timestring = ""
+    local function secsToTimestring(secs, isCompact) 
+		-- convert seconds to 'x hrs y mins' format
+		
+        if not secs then secs = 0 end
+		local timestring = ""
 
         local h = math.floor(secs / 3600)
         local m = math.floor((secs % 3600) / 60)
@@ -235,7 +292,9 @@ function quicklookwindow:init()
         return timestring
     end
 
-    local function vertical_spacing(h) -- vertical space eq. to h*w_padding.internal
+    local function vertical_spacing(h) 
+		-- vertical space eq. to h*w_padding.internal
+		
         if h == nil then
             h = 1
         end
@@ -243,16 +302,22 @@ function quicklookwindow:init()
         return s
     end
 
-    local function textt(txt, tfont, tsize, tclr, tpadding) -- creates TextWidget
-        if not tclr then tclr = w_font.color.black end
-
-        local w =
-            TextWidget:new {
-            text = txt,
-            face = Font:getFace(tfont, tsize),
-            fgcolor = tclr,
-            bold = false,
-			padding = tpadding or Screen:scaleBySize(2)
+    local function textt( -- creates TextWidget
+						txt, 
+						tfont, 
+						tsize, 
+						tclr, 
+						tpadding
+						) 
+						
+        tclr = tclr or w_font.color.black
+		
+        local w = TextWidget:new {          
+					text = txt,
+					face = Font:getFace(tfont, tsize),
+					fgcolor = tclr,
+					bold = false,
+					padding = tpadding or Screen:scaleBySize(2)
         }
         return w
     end
@@ -264,19 +329,28 @@ function quicklookwindow:init()
         return width
     end
 
-    local function textboxx(txt, tfont, tsize, tclr, twidth, tbold, alignmt) -- creates TextBoxWidget
-        if not tclr then tclr = w_font.color.black end
-        if not tbold then tbold = false end
-        if not alignmt then alignmt = "center" end
-        local w =
-            TextBoxWidget:new {
-            text = txt,
-            face = Font:getFace(tfont, tsize),
-            fgcolor = tclr,
-            bold = tbold,
-            width = twidth,
-            alignment = alignmt,
-			line_height = line_ht
+    local function textboxx( -- creates TextBoxWidget
+							txt, 
+							tfont, 
+							tsize, 
+							tclr, 
+							twidth, 
+							tbold, 
+							alignmt
+							) 
+					
+        tclr = tclr or w_font.color.black
+        tbold = tbold or false
+        alignmt = alignmt or "center"
+		
+        local w = TextBoxWidget:new {           
+					text = txt,
+					face = Font:getFace(tfont, tsize),
+					fgcolor = tclr,
+					bold = tbold,
+					width = twidth,
+					alignment = alignmt,
+					line_height = line_ht
         }
         return w
     end
@@ -306,10 +380,18 @@ function quicklookwindow:init()
 		
 		local chapter_pgturn, chapter_pgturn_left, chapter_pgturn_total = 0, 0, 0
 		local nextChapterTickPgturn, previousChapterTickPgturn = 0, 0
-        if self.ui.pagemap and self.ui.pagemap:wantsPageLabels() and ReaderToc then -- if stable pages are ON and toc is available
-            nextChapterTickPgturn = ReaderToc:getNextChapter(book_pageturn) or (book_pageturn_total + 1)
+		
+        if self.ui.pagemap and 
+		self.ui.pagemap:wantsPageLabels() and 
+		ReaderToc then -- if stable pages are ON and toc is available
+            nextChapterTickPgturn = ReaderToc:getNextChapter(book_pageturn) or 
+									(book_pageturn_total + 1)
 			previousChapterTickPgturn = ReaderToc:getPreviousChapter(book_pageturn) or 1
-			if book_pageturn == 1 or ReaderToc:isChapterStart(book_pageturn) then previousChapterTickPgturn = book_pageturn end
+			
+			if book_pageturn == 1 or ReaderToc:isChapterStart(book_pageturn) then 
+				previousChapterTickPgturn = book_pageturn 
+			end
+			
 			chapter_pgturn = book_pageturn - previousChapterTickPgturn +1
 			chapter_pgturn_total = nextChapterTickPgturn - previousChapterTickPgturn
             chapter_pgturn_left = nextChapterTickPgturn - book_pageturn - 1
@@ -318,6 +400,15 @@ function quicklookwindow:init()
 			chapter_pgturn_total = chapter_total
 			chapter_pgturn_left = chapter_left
         end	
+		
+		--chapter indices
+		local chapter_idx_curr, chapter_idx_total = 0,0
+		
+		if ReaderToc and MR_SETT.ch_index == 1 then 
+			chapter_idx_curr = ReaderToc:getTocIndexByPage(book_pageturn) or 0
+			local flat_toc = ReaderToc:getTocTicksFlattened() or {}
+			chapter_idx_total = #flat_toc or 0
+		end				   															
 
 		-- progress percentages
 		
@@ -328,10 +419,32 @@ function quicklookwindow:init()
 
         local timeReadToday, pagesReadToday = 0, 0
         local timeReadToday_str, pagesReadToday_str = "", ""
+		
         if statsEnabled and self.ui.document and not bookCompleted then
-            timeReadToday, pagesReadToday = ReaderStatistics:getTodayBookStats() -- stats for today across all books
-            timeReadToday_str = secsToTimestring(timeReadToday, true)
-            pagesReadToday_str = T(N_("1 pg", "%1 pgs", pagesReadToday), pagesReadToday)
+			if MR_SETT.today_curr_book == 1 then 
+				local book_Id = ReaderStatistics.id_curr_book or 0		
+				local conn = SQ3.open(db_location)		
+				local sql_stmt = [[
+					SELECT count(*),
+						   sum(sum_duration)
+					FROM    (
+								 SELECT sum(duration)    AS sum_duration
+								 FROM   page_stat
+								 WHERE  start_time >= %d
+								 AND id_book == %d
+								 GROUP BY id_book, page 
+							);
+				]]
+				pagesReadToday, timeReadToday = conn:rowexec(string.format(sql_stmt, ts_midnight_today, book_Id))
+				conn:close()		
+			else 
+				timeReadToday, pagesReadToday = ReaderStatistics:getTodayBookStats() --all books
+			end
+				timeReadToday = timeReadToday and tonumber(timeReadToday) or 0
+				pagesReadToday = pagesReadToday and tonumber(pagesReadToday) or 0
+
+				timeReadToday_str = secsToTimestring(timeReadToday, true)
+				pagesReadToday_str = T(N_("1 pg", "%1 pgs", pagesReadToday), pagesReadToday)			
         end
 
         -- time left in chapter / book
@@ -348,7 +461,9 @@ function quicklookwindow:init()
         local timeLeft_book = "calc. time left"
         local timeLeft_chapter = timeLeft_book
         if ReaderStatistics.avg_time and ReaderStatistics.avg_time > 0 then
-            timeLeft_book = secsToTimestring(timeLeft_secs(book_pageturn_left + 1), true) .. " left" -- +1 to include current page when calc. time left
+            timeLeft_book = secsToTimestring(timeLeft_secs(book_pageturn_left + 1), true) .. " left" 
+			-- +1 to include current page when calc. time left
+			
             timeLeft_chapter = secsToTimestring(timeLeft_secs(chapter_pgturn_left + 1), true) .. " left"
         end
 
@@ -361,20 +476,18 @@ function quicklookwindow:init()
 		-- vertical line helper function
 		
 		local vertical_line = function(height)
-			local line = 
-					LineWidget:new{  
-					background = Blitbuffer.COLOR_GRAY,   
-					dimen = 
-						Geom:new{  
-						w = Screen:scaleBySize(1),   
-						h = height, 
-					},  
+			local line = LineWidget:new{					  
+							background = Blitbuffer.COLOR_GRAY,   
+							dimen = 
+								Geom:new{  
+								w = Screen:scaleBySize(1),   
+								h = height, 
+							},  
 			}		
-			line = 
-				HorizontalGroup:new{
-				HorizontalSpan:new{width = lineClearance},
-				line,
-				HorizontalSpan:new{width = lineClearance},
+			line = HorizontalGroup:new{				
+					HorizontalSpan:new{width = lineClearance},
+					line,
+					HorizontalSpan:new{width = lineClearance},
 			}
 			return line
 		end
@@ -385,10 +498,25 @@ function quicklookwindow:init()
 			local wid = w_width * 0.7
 			local t = book_title .. " - " .. book_author
 			t = string.lower(t)		
-			local t_widget = textboxx(t, w_font.face.it, titleFontSize, w_font.color.black, wid, nil, "left")
-			
+			local t_widget = textboxx(
+								t, 
+								w_font.face.it, 
+								titleFontSize, 
+								w_font.color.black, 
+								wid, 
+								nil, 
+								"left"
+			)			
 			local pXofY = "page " .. book_page .. " of " .. book_total
-			local pXofY_widget = textboxx(pXofY, w_font.face.reg, w_font.size.small, w_font.color.black, wid, nil, "left")
+			local pXofY_widget = textboxx(
+									pXofY, 
+									w_font.face.reg, 
+									w_font.size.small, 
+									w_font.color.black, 
+									wid, 
+									nil, 
+									"left"
+			)
 			
 			local tleft_font = w_font.face.bold
 			local tleft_text = timeLeft_book
@@ -397,8 +525,15 @@ function quicklookwindow:init()
 				tleft_text = "fin."
 			end
 			if not statsEnabled then tleft_text = "--" end
-			local bookTLeft_widget = textboxx(tleft_text, tleft_font, w_font.size.small, w_font.color.black, wid, nil,"left")
-			
+			local bookTLeft_widget = textboxx(
+										tleft_text, 
+										tleft_font, 
+										w_font.size.small,
+										w_font.color.black, 
+										wid, 
+										nil,
+										"left"
+			)			
 			return VerticalGroup:new{
 								t_widget,
 								widgetClearance,
@@ -420,19 +555,25 @@ function quicklookwindow:init()
 			local wid = w_width * 0.3
 			local pct = prog_pct_book
 			--if pct > 0 and pct < 10 then pct = "0" .. pct end
-			local pct_textsize 
-			if pct == 100 then 
-				pct_textsize = 45
-			elseif pct < 10 then 
-				pct_textsize = 60
-			else
-				pct_textsize = 55
-			end		
-			
-			local number = textt(pct, w_font.face.reg, pct_textsize, w_font.color.black, 0)
+			local pct_textsize = pct == 100 and 45 or
+									pct < 10 and 60 or
+									55			
+			local number = textt(
+							pct, 
+							w_font.face.reg, 
+							pct_textsize, 
+							w_font.color.black, 
+							0
+			)
 			local number_dimen = number:getSize()
 			
-			local pctSymbol = textt("%", w_font.face.reg, w_font.size.small, w_font.color.black, 0)
+			local pctSymbol = textt(
+								"%", 
+								w_font.face.reg, 
+								w_font.size.small, 
+								w_font.color.black, 
+								0
+			)
 			local pctSymbol_dimen = pctSymbol:getSize()
 			
 			-- baseline matching
@@ -442,13 +583,14 @@ function quicklookwindow:init()
 			local baseline_diff = number_baseline - pctSymbol_baseline
 			pctSymbol.forced_baseline = pctSymbol_baseline + baseline_diff
 			
-			local correction = pct >= 10 and (math.floor(pctSymbol_dimen.w) / 2) or math.floor(pctSymbol_dimen.w)
+			local correction = pct >= 10 and (math.floor(pctSymbol_dimen.w) / 2) or 
+								math.floor(pctSymbol_dimen.w)
 			
 			local numberAndSymbol = HorizontalGroup:new{
-									HorizontalSpan:new{width = correction},
-									number,
-									--HorizontalSpan:new{width = Size.padding.small},
-									pctSymbol,
+										HorizontalSpan:new{width = correction},
+										number,
+										--HorizontalSpan:new{width = Size.padding.small},
+										pctSymbol,
 			}
 			local numberAndSymbol = CenterContainer:new{
 											dimen = Geom:new{w = wid, h = bookBox_dimen.h,},											
@@ -462,22 +604,56 @@ function quicklookwindow:init()
 		
 		local function buildChapterBox()
 			local wid = w_width * 0.7
+			chapter_title = string.lower(util.trim(chapter_title))
+			if chapter_title == "" then chapter_title = "ツ" end
 			
-			local t = "CHAPTER: " .. string.lower(chapter_title)
-			local t_widget = textboxx(t, w_font.face.it, titleFontSize, w_font.color.black, wid, nil, "left")
+			local t = MR_SETT.ch_index == 1 and 
+						string.format("CHAPTER %i OF %i: \n%s", 
+										chapter_idx_curr, 
+										chapter_idx_total,
+										chapter_title) or
+										"CHAPTER: " .. chapter_title
+						
+			local t_widget = textboxx(
+								t, 
+								w_font.face.it, 
+								titleFontSize, 
+								w_font.color.black, 
+								wid, 
+								nil, 
+								"left"
+			)			
 			
 			local pXofY = "page " .. chapter_page .. " of " .. chapter_total
 			pXofY = T(_("%1 (%2%)"), pXofY, prog_pct_chapter)
-			local pXofY_widget = textboxx(pXofY, w_font.face.reg, w_font.size.small, w_font.color.black, wid, nil, "left")
+			local pXofY_widget = textboxx(
+									pXofY, 
+									w_font.face.reg, 
+									w_font.size.small, 
+									w_font.color.black, 
+									wid, 
+									nil, 
+									"left"
+			)
 
 			local tleft_font = w_font.face.bold
 			local tleft_text = timeLeft_chapter		
+			
 			if chapter_pgturn == chapter_pgturn_total then 
 				tleft_font = w_font.face.boldit
 				tleft_text = "fin."
 			end			
+			
 			if not statsEnabled then tleft_text = "--" end				
-			local chapterTLeft_widget = textboxx(tleft_text, tleft_font, w_font.size.small, w_font.color.black, wid, nil,"left")
+			local chapterTLeft_widget = textboxx(
+											tleft_text, 
+											tleft_font, 
+											w_font.size.small, 
+											w_font.color.black, 
+											wid, 
+											nil,
+											"left"
+			)
 			
 			return VerticalGroup:new{
 					t_widget,
@@ -496,13 +672,21 @@ function quicklookwindow:init()
 		local function buildTimeReadTodayBox()
 			local wid = w_width * 0.3
 			local t =  T(_("today:\n%1\n%2"), pagesReadToday_str, timeReadToday_str) 
-			if pagesReadToday == 0 then 
+			if not pagesReadToday or pagesReadToday == 0 then 
 				t = "today:\nnope. :("
 			end
 			if not statsEnabled then
 				t = "today:\n--"
 			end
-			local t_widget = textboxx(t, w_font.face.reg, w_font.size.small, w_font.color.lightGray, wid, nil, "left")
+			local t_widget = textboxx(
+								t, 
+								w_font.face.reg, 
+								w_font.size.small, 
+								w_font.color.lightGray, 
+								wid, 
+								nil, 
+								"left"
+			)
 			
 			return VerticalGroup:new{
 						t_widget,
@@ -511,48 +695,43 @@ function quicklookwindow:init()
 		end
 		local timeReadTodayBox = buildTimeReadTodayBox()		
 		
-		local topHalf = 
-					HorizontalGroup:new{
-					bookPctBox,
-					top_separator,
-					bookBox,
+		local topHalf = HorizontalGroup:new{					
+							bookPctBox,
+							top_separator,
+							bookBox,
 		}											
 											
-		local horSeparator = 	
-					VerticalGroup:new{
-					VerticalSpan:new{width = lineClearance},
-					LineWidget:new{  
-								background = Blitbuffer.COLOR_GRAY,
-								dimen = 
-										Geom:new{  
-										w = w_width + Screen:scaleBySize(1) + lineClearance * 2, 
-										h = Screen:scaleBySize(1),
-								},  
-					},
-					VerticalSpan:new{width = lineClearance},
+		local horSeparator = VerticalGroup:new{					
+								VerticalSpan:new{width = lineClearance},
+								LineWidget:new{  
+											background = Blitbuffer.COLOR_GRAY,
+											dimen = 
+													Geom:new{  
+														w = w_width + Screen:scaleBySize(1) + lineClearance * 2, 
+														h = Screen:scaleBySize(1),
+											},  
+								},
+								VerticalSpan:new{width = lineClearance},
 		}
 								
-		local bottomHalf = 
-					HorizontalGroup:new{
-					chapterBox,
-					bottom_separator,
-					timeReadTodayBox,
+		local bottomHalf = HorizontalGroup:new{					
+							chapterBox,
+							bottom_separator,
+							timeReadTodayBox,
 		}
 
-        local quickLookWindow = 
-						VerticalGroup:new{
-						topHalf,
-						horSeparator,
-						bottomHalf
+        local quickLookWindow = VerticalGroup:new{						
+									topHalf,
+									horSeparator,
+									bottomHalf
 		}            
 
-		local final_frame =
-					FrameContainer:new{
-					radius = Screen:scaleBySize(22),
-					bordersize = Screen:scaleBySize(2),
-					padding = w_padding.external,
-					background = Blitbuffer.COLOR_WHITE,
-					quickLookWindow
+		local final_frame = FrameContainer:new{					
+								radius = Screen:scaleBySize(22),
+								bordersize = Screen:scaleBySize(2),
+								padding = w_padding.external,
+								background = Blitbuffer.COLOR_WHITE,
+								quickLookWindow
 		}
 		
 		return final_frame
@@ -599,32 +778,27 @@ function quicklookwindow:init()
             daysAgo = daysAgo + 1
         end
         local daysAgoTxt = ""
-        if not statsEnabled then
-            daysAgoTxt = "--"
-        elseif daysAgo == 0 then
-            daysAgoTxt = "started today"
-        elseif daysAgo == 1 then
-            daysAgoTxt = "started yesterday"
-        else
-            daysAgoTxt = string.format("started %i days ago", daysAgo)
-        end
+		daysAgoTxt = not statsEnabled and "--" or
+						daysAgo == 0 and "started today" or
+						daysAgo == 1 and "started yesterday" or
+						string.format("started %i days ago", daysAgo)
 
         local bookStartDate = ""
         if statsEnabled then
             bookStartDate = os.date("%d-%m-%Y", tonumber(ts_bookStart))
         end
 
-        local startedOn_str = string.format("%s (%s)", daysAgoTxt, bookStartDate) -- "started x days ago (dd--mm--yyyy)"
+        local startedOn_str = string.format("%s (%s)", daysAgoTxt, bookStartDate)
 
         -- BOOK READ TIME / HIGHLIGHT COUNT
 
-        local bookReadTime, bookPagesRead, highlightCount = 0, 0, 0 -- bookreadtime is from FIRST OPEN till NOW
+        local bookReadTime, bookPagesRead, highlightCount = 0, 0, 0
         if statsEnabled and bookCompleted then
             local pages_placeholder, time_placeholder = ReaderStatistics:getPageTimeTotalStats(ReaderStatistics.id_curr_book)
 			bookReadTime = time_placeholder or 0
 			bookPagesRead = pages_placeholder or 0
-			local ok, stats = pcall(ReaderStatistics.getCurrentStat, ReaderStatistics) 	-- using pcall to defend against some
-			if ok and stats and stats[15] then  										-- unexpected crashes when launching bc window.
+			local ok, stats = pcall(ReaderStatistics.getCurrentStat, ReaderStatistics) 
+			if ok and stats and stats[15] then  										
 				highlightCount = tonumber(stats[15][2]) or 0  
 			end           		
         end
@@ -635,17 +809,34 @@ function quicklookwindow:init()
         if statsEnabled then
             highlightCount_str = T(N_("1 highlight", "%1 highlights", highlightCount), highlightCount)
             bookReadTime_string = string.format("read for %s", secsToTimestring(bookReadTime))
-            bookCompleteStats = string.format("%s\n%s\n%s", bookReadTime_string, startedOn_str, highlightCount_str)
+            bookCompleteStats = string.format(
+									"%s\n%s\n%s", 
+									bookReadTime_string, 
+									startedOn_str, 
+									highlightCount_str
+			)
         end
 
         -- WINDOW WIDTH
 
         local bcWidgetWidth = 0
         if not statsEnabled then
-            bcWidgetWidth = getWidth("book complete!", w_font.face.boldit, w_font.size.med)
+            bcWidgetWidth = getWidth(
+								"book complete!", 
+								w_font.face.boldit, 
+								w_font.size.med
+			)
         else
-			local wid1 = getWidth(startedOn_str, w_font.face.it, w_font.size.small)
-			local wid2 = getWidth(bookReadTime_string, w_font.face.it, w_font.size.small)
+			local wid1 = getWidth(
+							startedOn_str, 
+							w_font.face.it, 
+							w_font.size.small
+			)
+			local wid2 = getWidth(
+							bookReadTime_string, 
+							w_font.face.it, 
+							w_font.size.small
+			)
 			bcWidgetWidth = math.max(wid1, wid2)
 		end
 
@@ -653,9 +844,21 @@ function quicklookwindow:init()
         if bookCompleted then
             bookCompleteWindow =
                 VerticalGroup:new {
-                textboxx("book complete!", w_font.face.boldit, w_font.size.med, w_font.color.black, bcWidgetWidth),
+                textboxx(
+					"book complete!", 
+					w_font.face.boldit, 
+					w_font.size.med, 
+					w_font.color.black, 
+					bcWidgetWidth
+				),
                 vertical_spacing(0.5),
-                textboxx(bookCompleteStats, w_font.face.it, w_font.size.small, w_font.color.black, bcWidgetWidth)
+                textboxx(
+					bookCompleteStats, 
+					w_font.face.it, 
+					w_font.size.small, 
+					w_font.color.black, 
+					bcWidgetWidth
+				)
             }
         end
 
@@ -679,6 +882,7 @@ function quicklookwindow:init()
 	
     local function buildBooksReadTodayWindow()
         local booksReadToday = {}
+		
         if not self.ui.document and statsEnabled then
             local conn = SQ3.open(db_location)
             local sql_stmt_booksReadToday =
@@ -688,7 +892,8 @@ function quicklookwindow:init()
 														sum(page_stat_tbl.duration),
 														book_tbl.id
 												FROM    page_stat AS page_stat_tbl, book AS book_tbl
-												WHERE   page_stat_tbl.id_book=book_tbl.id AND page_stat_tbl.start_time BETWEEN %d AND %d
+												WHERE   page_stat_tbl.id_book=book_tbl.id 
+												AND     page_stat_tbl.start_time BETWEEN %d AND %d
 												GROUP   BY book_tbl.id
 												ORDER   BY book_tbl.last_open DESC;
 											]]
@@ -701,7 +906,8 @@ function quicklookwindow:init()
                 local p = tonumber(booksReadToday[2][i]) -- pages read today
                 local p_str = T(N_("1 pg", "%1 pgs", p), p)
                 local d = secsToTimestring(tonumber(booksReadToday[3][i])) -- time read
-				if brtAuthorsEnabled then -- if authors enabled, then replaces "title" in [1][i] with "title - author(s)"
+				if MR_SETT.brt_authors == 1 then -- if authors enabled, then replaces "title" in [1][i] 
+												 -- with "title - author(s)"
 					local bookId = booksReadToday[4][i] -- grab book id
 					local auth = ""
 					local auth_str = ""
@@ -719,21 +925,33 @@ function quicklookwindow:init()
         end
 
         -- WINDOW WIDTH
-		local brtWindowTitle = textt("books read today", w_font.face.boldit, w_font.size.med, w_font.color.black, 0)
+		local brtWindowTitle = textt(
+								"books read today", 
+								w_font.face.boldit, 
+								w_font.size.med, 
+								w_font.color.black, 
+								0
+		)
         local brtWindowWidth = brtWindowTitle:getSize().w         
-        local brtWindowWidth_max = math.floor(screen_width / 2)
-        if screen_width > screen_height then
-            brtWindowWidth_max = math.floor(brtWindowWidth_max * screen_height / screen_width)
-        end		
+        local brtWindowWidth_max = math.floor(math.min(screen_width, screen_height) / 2)
+
         if statsEnabled and booksReadToday then
             local maxTitleWidth = 0 -- max width of book title string
 			local maxStatWidth = 0	-- max width of book stats string
             for i = 1, #booksReadToday[1] do
-                local w_title = getWidth(booksReadToday[1][i], w_font.face.reg, w_font.size.small)
+                local w_title = getWidth(
+									booksReadToday[1][i], 
+									w_font.face.reg, 
+									w_font.size.small
+				)
                 if w_title > maxTitleWidth then
                     maxTitleWidth = w_title
                 end
-                local w_stats = getWidth(booksReadToday[4][i], w_font.face.it, w_font.size.small)
+                local w_stats = getWidth(
+									booksReadToday[4][i], 
+									w_font.face.it, 
+									w_font.size.small
+				)
                 if w_stats > maxStatWidth then
                     maxStatWidth = w_stats
                 end
@@ -750,9 +968,21 @@ function quicklookwindow:init()
 
         local function booksReadTodayEntry(brt_bookTitle, brtStats_str)
             local titleText = brt_bookTitle --string.format("%s", brt_bookTitle)
-            local title = textboxx(titleText, w_font.face.reg, w_font.size.small, w_font.color.black, brtWindowWidth)
+            local title = textboxx(
+							titleText, 
+							w_font.face.reg, 
+							w_font.size.small,
+							w_font.color.black, 
+							brtWindowWidth
+			)
 
-            local brtStats = textt(brtStats_str, w_font.face.it, w_font.size.small, w_font.color.lightGray, 0)
+            local brtStats = textt(
+								brtStats_str, 
+								w_font.face.it, 
+								w_font.size.small, 
+								w_font.color.lightGray, 
+								0
+			)
 
             local w =
                 VerticalGroup:new {
@@ -771,8 +1001,14 @@ function quicklookwindow:init()
 			vertical_spacing(0.7)
 		}
 		if statsEnabled and booksReadToday then
-		local brt_separator = textboxx("-", w_font.face.it, w_font.size.small, w_font.color.black, brtWindowWidth)
-		brt_separator.forced_height = brtWindowTitle:getSize().h
+			local brt_separator = textboxx(
+									"-", 
+									w_font.face.it, 
+									w_font.size.small, 
+									w_font.color.black, 
+									brtWindowWidth
+			)
+			brt_separator.forced_height = brtWindowTitle:getSize().h
 			for i = 1, #booksReadToday[1] do
 				local t = string.lower(booksReadToday[1][i]) -- book title                  
 				local statsStr = booksReadToday[4][i]
@@ -782,20 +1018,31 @@ function quicklookwindow:init()
 			table.remove(booksReadTodayWindow) -- removes trailing separator
 		elseif not statsEnabled then
 			booksReadTodayWindow[#booksReadTodayWindow + 1] =
-				textboxx("--", w_font.face.it, w_font.size.small, w_font.color.black, brtWindowWidth)
+				textboxx(
+					"--", 
+					w_font.face.it, 
+					w_font.size.small, 
+					w_font.color.black, 
+					brtWindowWidth
+				)
 		else -- if no books read yet
 			booksReadTodayWindow[#booksReadTodayWindow + 1] =
-				textboxx("nope. :(", w_font.face.it, w_font.size.small, w_font.color.black, brtWindowWidth)
+				textboxx(
+					"nope. :(", 
+					w_font.face.it, 
+					w_font.size.small, 
+					w_font.color.black, 
+					brtWindowWidth
+				)
 		end
 		
-		local final_frame =
-			FrameContainer:new {
-			radius = Screen:scaleBySize(10),
-			bordersize = Screen:scaleBySize(2),
-			padding = w_padding.external,
-			padding_top = math.floor(w_padding.external / 1.5),
-			background = Blitbuffer.COLOR_WHITE,
-			booksReadTodayWindow
+		local final_frame = FrameContainer:new {			
+								radius = Screen:scaleBySize(10),
+								bordersize = Screen:scaleBySize(2),
+								padding = w_padding.external,
+								padding_top = math.floor(w_padding.external / 1.5),
+								background = Blitbuffer.COLOR_WHITE,
+								booksReadTodayWindow
 		}
 		
 		return final_frame
@@ -938,7 +1185,7 @@ function ReaderUI:onEndOfBook()
 
     bookCompleted = true
 
-    if showBookCompleteWindow then
+    if MR_SETT.book_cmpl_wnd == 1 then
         local widget =
             quicklookwindow:new {
             ui = self,
