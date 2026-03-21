@@ -1,5 +1,5 @@
---[ reading insights popup v1.0.44 ] 
---cache writes to separate lua file
+--[ reading insights popup v1.0.45 ] 
+--guard against ref. entries_desc[0] in computeStreaks() for best_start, best_end
 
 -- ABOUT:
 -- this is a modified version of the 'reading insights popup' userpatch made by u/quanganhdo.
@@ -461,8 +461,8 @@ local function computeStreaks(entries_desc, is_consecutive, is_current_start, we
 
     local best = 1
     local run = 1
-	local best_start = 0
-	local best_end = 0
+	local best_start = 1
+	local best_end = 1
 	local best_end_temp = 0 --temporary
     for i = 2, #entries_desc do
         if is_consecutive(entries_desc[i - 1][1], entries_desc[i][1]) then
@@ -479,11 +479,26 @@ local function computeStreaks(entries_desc, is_consecutive, is_current_start, we
     end
 	
 	if weeksOrDays == 1 then -- days
-		best_start = tonumber(entries_desc[best_start][2])
-		best_end = tonumber(entries_desc[best_end][2])
+		best_start = entries_desc and 
+						entries_desc[best_start] and 
+						entries_desc[best_start][2] and 
+						tonumber(entries_desc[best_start][2]) or 0
+						
+		best_end = entries_desc and 
+						entries_desc[best_end] and 
+						entries_desc[best_end][2] and 
+						tonumber(entries_desc[best_end][2]) or 0
+						
 	else
-		best_start = tonumber(entries_desc[best_start][1]) 	--first timestamp of first week
-		best_end = tonumber(entries_desc[best_end][2])		--last timestamp of last week
+		best_start = entries_desc and 
+					entries_desc[best_start] and 
+					entries_desc[best_start][1] and 
+					tonumber(entries_desc[best_start][1]) or 0 --first timestamp of first week
+					
+		best_end = entries_desc and 
+					entries_desc[best_end] and 
+					entries_desc[best_end][2] and 
+					tonumber(entries_desc[best_end][2])	or 0	--last timestamp of last week
 	end
 	
 	return{
@@ -1211,7 +1226,7 @@ local function buildBestStreakWidget(streaks, streaks_dimen, fonts, streaks_colo
 					value_widget,
 		} 
 		
-		if  (value > 1 and ts_start and ts_end) or (ts_start >= 1 and ts_end >=1)then 
+		if  value > 1 and ts_start and ts_end and ts_start >= 1 and ts_end >=1 then 
 			local startDay =  os.date("%-d " .._(os.date("%b", ts_start)) .. " '%y", ts_start)
 			local endDay = os.date("%-d " .._(os.date("%b", ts_end)) .. " '%y", ts_end)
 			local startEndWidget_txt = string.upper(startDay .. " - " .. endDay)
