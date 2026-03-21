@@ -1,5 +1,5 @@
---[ reading insights popup v1.0.45 ] 
---guard against ref. entries_desc[0] in computeStreaks() for best_start, best_end
+--[ reading insights popup v1.0.46 ] 
+--inf_loop_guard
 
 -- ABOUT:
 -- this is a modified version of the 'reading insights popup' userpatch made by u/quanganhdo.
@@ -63,6 +63,8 @@ local Screen = Device.screen
 local gettext = require("gettext")
 local T = require("ffi/util").template
 local util = require("util")
+
+local inf_loop_guard = 0
 
 -- User patch localization: add your language overrides here.
 local PATCH_L10N = {
@@ -1756,7 +1758,13 @@ local function populateEverything(popup_self, year, yearRange)
 end
 
 local function yearExistsInCache(year)
-	if insightsCache and insightsCache.yearlyStats and insightsCache.yearlyStats[year] then
+	if insightsCache and 
+	insightsCache.yearlyStats and 
+	insightsCache.yearlyStats[year] and 
+	insightsCache.monthlyReadingDays and
+	insightsCache.monthlyReadingDays[year] and 
+	insightsCache.monthlyReadingHours and
+	insightsCache.monthlyReadingHours[year] then
 		return true
 	end
 	return false
@@ -1830,7 +1838,15 @@ function ReadingInsightsPopup:init()
     }	
 	
     if everything.isPlaceholder then 
-		self:onGoToPrevYear(self, self.selected_year) 
+		if inf_loop_guard == 0 then 
+			inf_loop_guard = 1
+			self:onGoToPrevYear(self, self.selected_year) 
+		else
+			local loading = InfoMessage:new{text = "Unable to load insights", timeout = 2}  
+			UIManager:show(loading)
+		end
+	else 
+		inf_loop_guard = 0
     end  
 
     self.dimen = Geom:new{ w = screen_w, h = screen_h }
@@ -1896,8 +1912,6 @@ local function buildAndShowTargetYear(popup_self, target_year)
 		return true
 	end
 	popup_self:update(popup_self, target_year, popup_self.mode)
-	
-
 end
 
 function ReadingInsightsPopup:onGoToPrevYear(popup_self, forced_year)
