@@ -1,5 +1,5 @@
---[ reading insights popup v1.0.46 ] 
---inf_loop_guard
+--[ reading insights popup v1.0.49 ] 
+-- tweaked: help text, checkbutton text
 
 -- ABOUT:
 -- this is a modified version of the 'reading insights popup' userpatch made by u/quanganhdo.
@@ -18,18 +18,13 @@
 -- non touch devices can move between years using page turn buttons.
 -- all devices can open year selector by tapping or clicking on the current year label.
 -- long press on the year label to find options to force reload data.
--- by default, this patch refreshes the displayed data only once per day. all subsequent 
--- changes for the day will be updated on the following day's refresh. if you want to change 
--- this behaviour and have it refresh every time new data is added to the statistics sql, 
--- set the 'refreshOnlyOncePerDay' flag below to 'false'.
-
-local refreshOnlyOncePerDay = true
 
 local Blitbuffer = require("ffi/blitbuffer")
 local BottomContainer = require("ui/widget/container/bottomcontainer")
 local Button = require("ui/widget/button")
 local ButtonDialog = require("frontend/ui/widget/buttondialog")
 local CenterContainer = require("ui/widget/container/centercontainer")
+local CheckButton = require("frontend/ui/widget/checkbutton")
 local ConfirmBox = require("ui/widget/confirmbox")
 local DataStorage = require("datastorage")
 local Device = require("device")
@@ -277,6 +272,30 @@ end
 local database_file = DataStorage:getDataDir() .. "/reading_insights_data.lua"
 local ReadingInsightsDatabase = LuaSettings:open(database_file)
 
+--SETTINGS
+
+DEFAULTS = {
+			once_per_day = 1,
+			reload_all_data_after_sync = 0,
+}
+
+RI_SETT = ReadingInsightsDatabase:readSetting("RI_SETT") or DEFAULTS
+
+for k, v in pairs(DEFAULTS) do
+	if not RI_SETT[k] then 
+		RI_SETT[k] = DEFAULTS[k]
+	end
+end
+
+local function writeSettToDisk()
+	ReadingInsightsDatabase:saveSetting("RI_SETT", RI_SETT)
+	ReadingInsightsDatabase:flush()
+end
+
+local function flipSett(value)
+	return value == 0 and 1 or 0
+end
+
 --CACHE
 local insightsCache = ReadingInsightsDatabase:readSetting("readingInsights_cache") or {
 				streaks = nil,
@@ -290,7 +309,7 @@ local cache_timestamps = ReadingInsightsDatabase:readSetting("readingInsights_ca
 				fullClear = 1262304000, 	-- cached stats sync timestamp aka cache fully cleared (recorded via stats plugin patch)
 				statsSynced = 1262304000,	-- latest stats sync timestamp (recorded via stats plugin patch)
 				lastRefreshed = 1262304000,	-- latest cache modified timestamp (recorded bwith os.time(), used to 
-											-- manage refreshOnlyOncePerDay)
+											-- manage RI_SETT.once_per_day)
 }
 local cachedLayout = nil
 local function writeCacheTimestampsToDisk()
@@ -345,9 +364,9 @@ local function clearCacheIfRequired() -- checks and calls clearCache() as per re
 	
     latest_db_mod_timestamp = getDbModTime() 
 
-	if refreshOnlyOncePerDay and (cache_timestamps.lastRefreshed > ts_midnight_today) then return end	
+	if RI_SETT.once_per_day == 1 and (cache_timestamps.lastRefreshed > ts_midnight_today) then return end	
 	
-	if (cache_timestamps.statsSynced > cache_timestamps.fullClear) then --if stats db was modified via sync		
+	if RI_SETT.reload_all_data_after_sync == 1 and (cache_timestamps.statsSynced > cache_timestamps.fullClear) then --if stats db was modified via sync		
 		set_cache_fullClear_timestamp(cache_timestamps.statsSynced)
 		set_cache_partialClear_timestamp(latest_db_mod_timestamp)
 		cache_timestamps.lastRefreshed = ts_now
@@ -370,7 +389,7 @@ local function clearCacheIfRequired() -- checks and calls clearCache() as per re
 	end
 end
 
---FALLBACK ARRAY
+--FALLBACK TABLE
 local fallback_monthlyData = {}
 
 for month_num = 1, 12 do
@@ -479,28 +498,22 @@ local function computeStreaks(entries_desc, is_consecutive, is_current_start, we
             run = 1
         end
     end
+
+	best_end = entries_desc and 
+				entries_desc[best_end] and 
+				entries_desc[best_end][2] and 
+				tonumber(entries_desc[best_end][2])	or 0	--last timestamp of last week
 	
 	if weeksOrDays == 1 then -- days
 		best_start = entries_desc and 
 						entries_desc[best_start] and 
 						entries_desc[best_start][2] and 
-						tonumber(entries_desc[best_start][2]) or 0
-						
-		best_end = entries_desc and 
-						entries_desc[best_end] and 
-						entries_desc[best_end][2] and 
-						tonumber(entries_desc[best_end][2]) or 0
-						
+						tonumber(entries_desc[best_start][2]) or 0												
 	else
 		best_start = entries_desc and 
 					entries_desc[best_start] and 
 					entries_desc[best_start][1] and 
-					tonumber(entries_desc[best_start][1]) or 0 --first timestamp of first week
-					
-		best_end = entries_desc and 
-					entries_desc[best_end] and 
-					entries_desc[best_end][2] and 
-					tonumber(entries_desc[best_end][2])	or 0	--last timestamp of last week
+					tonumber(entries_desc[best_start][1]) or 0 --first timestamp of first week					
 	end
 	
 	return{
@@ -520,10 +533,17 @@ local function parseDateYMD(date_str)
     return year, month, day
 end
 
+local function getTotalWeeksInYear(year)
+	year = year or 2020
+	-- dec 28 will always fall on last week of the year
+	local ts = os.time{year = year, month = 12, day = 28}
+	return tonumber(os.date("%V", ts))
+end
+
 local function parseWeekYear(week_stamp)
     if not week_stamp then return end
-    local year_week = os.date("%G-%V", week_stamp)
-    return year_week
+	local yr, wk = os.date("%G", week_stamp), os.date("%V", week_stamp)
+	return tonumber(yr), tonumber(wk)
 end
 
 local function formatHoursRead(seconds)
@@ -647,92 +667,126 @@ local function buildYearHeader(popup_self, font_section, layout, yearRange)
 		end)  
 	end 
 	
-	local hold_buttons = {
-							{
+	local function buildHoldDialog()	
+		local a	
+		local hold_buttons = {		
 								{
-									text = "Check for new stats",
-									align = "left",
-									callback = function() 
-										UIManager:close(year_button_hold_dialog)
-										local orig_refreshOnlyOncePerDay = refreshOnlyOncePerDay
-										refreshOnlyOncePerDay = false
-										clearCacheIfRequired()
-										refreshOnlyOncePerDay = orig_refreshOnlyOncePerDay
-										popup_self:onGoToPrevYear(popup_self, popup_self.selected_year) 
-										return true
-									end,
+									{
+										text = "Check for new stats",
+										align = "left",
+										callback = function() 
+											UIManager:close(a)
+											local orig_refreshOnlyOncePerDay = RI_SETT.once_per_day
+											RI_SETT.once_per_day = 0
+											clearCacheIfRequired()
+											RI_SETT.once_per_day = orig_refreshOnlyOncePerDay
+											popup_self:onGoToPrevYear(popup_self, popup_self.selected_year) 
+											return true
+										end,
+									},
 								},
-							},
-							{
 								{
-									text = "Force reload streaks",
-									align = "left",
-									callback = function() 
-										local confirm = ConfirmBox:new{
-												text = _("Reload streaks?"),
-												ok_text = _("Reload"),
-												cancel_text = _("Cancel"),
-												ok_callback = function()
-													UIManager:close(year_button_hold_dialog)
-													insightsCache.streaks = nil
-													popup_self:onGoToPrevYear(popup_self, popup_self.selected_year)
-												end,
-										}										
-										return UIManager:show(confirm)
-									end,
+									{
+										text = "Force reload streaks",
+										align = "left",
+										callback = function() 
+											local confirm = ConfirmBox:new{
+													text = _("Reload streaks?"),
+													ok_text = _("Reload"),
+													cancel_text = _("Cancel"),
+													ok_callback = function()
+														UIManager:close(a)
+														insightsCache.streaks = nil
+														popup_self:onGoToPrevYear(popup_self, popup_self.selected_year)
+													end,
+											}										
+											return UIManager:show(confirm)
+										end,
+									},
 								},
-							},
-							{
 								{
-									text = "Force reload " .. popup_self.selected_year .. " insights",
-									align = "left",
-									callback = function() 
-										local confirm = ConfirmBox:new{
-												text = _("Reload " .. popup_self.selected_year .. " insights?"),
-												ok_text = _("Reload"),
-												cancel_text = _("Cancel"),
-												ok_callback = function()
-													UIManager:close(year_button_hold_dialog)
-													clearCache(popup_self.selected_year)
-													popup_self:onGoToPrevYear(popup_self, popup_self.selected_year)		
-												end,
-										}										
-										return UIManager:show(confirm) 
-									end,
+									{
+										text = "Force reload " .. popup_self.selected_year .. " insights",
+										align = "left",
+										callback = function() 
+											local confirm = ConfirmBox:new{
+													text = _("Reload " .. popup_self.selected_year .. " insights?"),
+													ok_text = _("Reload"),
+													cancel_text = _("Cancel"),
+													ok_callback = function()
+														UIManager:close(a)
+														clearCache(popup_self.selected_year)
+														popup_self:onGoToPrevYear(popup_self, popup_self.selected_year)		
+													end,
+											}										
+											return UIManager:show(confirm) 
+										end,
+									},
 								},
-							},
-							{
 								{
-									text = "Force reload all insights",
-									align = "left",
-									callback = function() 
-										local confirm = ConfirmBox:new{
-												text = _("Reload all insights?"),
-												ok_text = _("Reload"),
-												cancel_text = _("Cancel"),
-												ok_callback = function()
-													UIManager:close(year_button_hold_dialog)
-													clearCache()
-													popup_self:onGoToPrevYear(popup_self, popup_self.selected_year)
-												end,
-										}										
-										return UIManager:show(confirm)
-									end,
-								},
-							},
-	
-	}
-	
-	year_button_hold_dialog = ButtonDialog:new{
-		    shrink_unneeded_width = true,
-			modal = true,
-			buttons = hold_buttons
-	}		
-	year_button_hold_dialog.onCloseWidget = function(self)  
-		UIManager:setDirty(nil, function()  
-			return "ui", self.movable.dimen  
-		end)  
-	end 
+									{
+										text = "Force reload all insights",
+										align = "left",
+										callback = function() 
+											local confirm = ConfirmBox:new{
+													text = _("Reload all insights?"),
+													ok_text = _("Reload"),
+													cancel_text = _("Cancel"),
+													ok_callback = function()
+														UIManager:close(a)
+														clearCache()
+														popup_self:onGoToPrevYear(popup_self, popup_self.selected_year)
+													end,
+											}										
+											return UIManager:show(confirm)
+										end,
+									},
+								}
+		}		
+		a = ButtonDialog:new{
+				modal = true,
+				buttons = hold_buttons,
+				width = Screen:scaleBySize(400),
+		}	
+		a:addWidget(CheckButton:new{
+										text = _("Refresh only once per day"),
+										checked = RI_SETT.once_per_day == 1,
+										callback = function()
+											RI_SETT.once_per_day = flipSett(RI_SETT.once_per_day)
+											writeSettToDisk()
+										end,
+										hold_callback = function()  
+											UIManager:show(InfoMessage:new{  
+												text = "CHECKED: refreshes insights only the first time new stats are detected in a day. subsequent ".. 
+														"changes will reflect in the following day's refresh."..
+														"\n\nUNCHECKED: refreshes insights every time new stats are detected."
+														
+											})
+										end,										
+										parent = a,
+		}) 
+		a:addWidget(CheckButton:new{
+										text = _("Reload all insights after sync"),
+										checked = RI_SETT.reload_all_data_after_sync == 1,
+										callback = function()
+											RI_SETT.reload_all_data_after_sync = flipSett(RI_SETT.reload_all_data_after_sync)
+											writeSettToDisk()
+										end,
+										hold_callback = function()  
+											UIManager:show(InfoMessage:new{  
+												text = "CHECKED: reloads all insights after statistics sync."..
+														"\n\nUNCHECKED: reloads only current/latest year insights after statistics sync."
+											})
+										end,										
+										parent = a,
+		})  		
+		a.onCloseWidget = function(self)  
+			UIManager:setDirty(nil, function()  
+				return "ui", self.movable.dimen  
+			end)  
+		end
+		return a
+	end
 	
     local year_label = TextWidget:new{
         text = tostring(selected_year),
@@ -781,7 +835,8 @@ local function buildYearHeader(popup_self, font_section, layout, yearRange)
 		return true
     end	
     function tappable_year_label:onHold()
-		UIManager:show(year_button_hold_dialog)
+		local hold_dialog = buildHoldDialog()
+		UIManager:show(hold_dialog)
     end	
 	
 	--FocusManager
@@ -1444,14 +1499,20 @@ function ReadingInsightsPopup:calculateStreaks()
         end
 
         local function isConsecutiveWeek(prev_week_stamp, curr_week_stamp)
-            local prev_year_wk = parseWeekYear(prev_week_stamp)
-            local curr_year_wk = parseWeekYear(curr_week_stamp)
-            if not prev_year_wk or not curr_year_wk then
+            local prev_year, prev_wk = parseWeekYear(prev_week_stamp)
+            local curr_year, curr_wk = parseWeekYear(curr_week_stamp)
+            if not prev_year or not prev_wk or not curr_year or not curr_wk then
                 return false
             end
 			
-			local expected_curr_year_wk = os.date("%G-%V", prev_week_stamp - (7 * 86400))			
-			return curr_year_wk == expected_curr_year_wk
+			if curr_year == prev_year and prev_wk == curr_wk + 1 then
+				return true
+			elseif
+				prev_year == curr_year + 1 and prev_wk == 1 and curr_wk == getTotalWeeksInYear(curr_year) then
+				return true
+			else
+				return false
+			end
         end
 
         streaks.weeks = computeStreaks(weeks, isConsecutiveWeek, isCurrentWeekStart, 0)
@@ -1782,7 +1843,7 @@ local function getDataToBeDisplayed(popup_self)
     end			
 	if (not yearExistsInCache(popup_self.selected_year)) or (not insightsCache.streaks) then 
 		popup_self.modal = false
-		logger.info("READING-INSIGHTS-POPUP: RETURNING FALLBACK ARRAY")
+		logger.info("READING-INSIGHTS-POPUP: RETURNING FALLBACK TABLE")
 		return fallbackTable		
 	end 	
 	
