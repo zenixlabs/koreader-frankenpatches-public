@@ -8,12 +8,6 @@ a little box that you can summon with a corner tap (or any other gesture) from r
 
 INSTALLATION: drop the .lua into the koreader/patches folder. set up a gesture to trigger the 'cvs receipt' action in 'general' category. 
 
-# [2-disable-touch-preserve-swipe.lua](https://github.com/zenixlabs/koreader-frankenpatches-public/blob/main/2-disable-touch-preserve-swipe.lua)
-
-basically the koreader equivalent of the 'touch lock' feature in the native kindle ui. disables all touch inputs EXCEPT page-turn swipes. lets you read without having to worry about accidental touches.
-
-INSTALLATION: drop the .lua into the koreader/patches folder and follow the set up instructions inside the file. 
-
 # [2-kobo-style-sleepscreen-banner.lua](https://github.com/zenixlabs/koreader-frankenpatches-public/blob/main/2-kobo-style-sleepscreen-banner.lua)
 ![download](https://github.com/user-attachments/assets/ca5821e9-5722-4969-ac52-be7f7431a006) 
 ![93746](https://github.com/user-attachments/assets/1d43d728-ecd2-4911-8b73-6805cb3dac6a)
@@ -55,12 +49,12 @@ appends 'Page x of y' to the folder name in filemanager view. very helpful if yo
 
 INSTALLATION: drop the .lua into the koreader/patches folder and restart.
 
-# [2-progress-bar-twins.lua](https://github.com/zenixlabs/koreader-frankenpatches-public/blob/main/2-progress-bar-twins.lua)
-![511379238-d4bd1992-8928-40b1-b30c-6fda269f5115](https://github.com/user-attachments/assets/98ecca69-fbe8-42c7-87ad-609f8c724cb9)
+# [2-profile-update.lua](https://github.com/zenixlabs/koreader-frankenpatches-public/blob/main/2-profile-update.lua)
+<img width="546" height="234" alt="Screenshot 2026-04-24 101842" src="https://github.com/user-attachments/assets/97c307ac-583c-4e3b-9376-915231032cf9" />
 
-two progress bars side by side. you can choose what progress (chapter or book) to show on each. you can even join them together and mirror one of them so that they essentially look like one regular progress bar that fills from the middle towards the edges. 
+adds 'Update' option to profile submenu.
 
-INSTALLATION: drop the .lua into the koreader/patches folder. you'll find instructions to customise the patch inside the file.
+INSTALLATION: drop the .lua into the koreader/patches folder and restart.
 
 # [2-reading-insights-popup.lua](https://github.com/zenixlabs/koreader-frankenpatches-public/blob/main/2-reading-insights-popup.lua)
 <img width="600" height="800" alt="FileManager_2026-01-28_184220" src="https://github.com/user-attachments/assets/74ac45ab-28f4-4fc6-b190-9d8f74f2a820" />
