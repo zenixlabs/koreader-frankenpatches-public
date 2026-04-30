@@ -1,17 +1,24 @@
 --[[ 2-profile-update.lua ]]
 --adds 'update' option to profile submenu
+--adds 'apply profile' dispatcher action
 
---[ v1.0.1 ]
---break if at least one profile submenu has 'update' option
+--[ v1.1 ]
+--'apply profile' dispatcher action
 
-local userpatch = require("userpatch")
+local ConfirmBox = require("ui/widget/confirmbox")
+local Device = require("device")
+local Dispatcher = require("dispatcher")
 local ffiUtil = require("ffi/util")
+local InfoMessage = require("ui/widget/infomessage")
+local Screen = Device.screen
+local UIManager = require("ui/uimanager")
+local userpatch = require("userpatch")
 local util = require("util")
 local _ = require("gettext")
 local T = ffiUtil.template
-local ConfirmBox = require("ui/widget/confirmbox")
-local InfoMessage = require("ui/widget/infomessage")
-local UIManager = require("ui/uimanager")
+
+local screen_width = Screen:getWidth()
+local screen_height = Screen:getHeight()
 
 local function updateOptionExists(tbl)
 	--checks if "Update" option already exists in the menu table
@@ -26,7 +33,18 @@ local function updateOptionExists(tbl)
 	return false
 end
 
-local function insertUpdateOption(plugin)
+--register "Apply profile" action
+Dispatcher:registerAction(
+    "profiles_show_list",
+    {
+        category = "none",
+        event = "ShowProfilesList",
+        title = _("Apply profile"),
+        general = true
+    }
+)
+
+local function patchProfilesPlugin(plugin)
 	
 	local Profiles = plugin
 	local og_get_table = Profiles.getSubMenuItems
@@ -69,5 +87,42 @@ local function insertUpdateOption(plugin)
 		end
 		return sub_menu_items
 	end
+	
+	function Profiles:onShowProfilesList()
+		local list
+		local list_items = {
+								{{					
+									text = "Select profile to apply:",
+									enabled_func = function() return false end,
+									callback = function() 																		
+									end,
+								}},																				
+		}
+		
+		local saved_profiles = self.data or {}
+		if not next(saved_profiles) then
+			UIManager:show(InfoMessage:new{text = "No saved profiles found!", timeout = 2,})
+			return
+		end
+		
+		for k, v in ffiUtil.orderedPairs(saved_profiles) do
+			local a = {
+						text = v.settings.name or "",
+						callback = function()
+							UIManager:close(list)
+							self:onProfileExecute(k, { qm_show = false })
+						end,
+			}
+			table.insert(list_items, {a})
+		end
+		
+		local ButtonDialog = require("frontend/ui/widget/buttondialog")
+		list = ButtonDialog:new{
+				modal = true,
+				width = math.min(screen_width, screen_height) / 2,
+				buttons = list_items,
+		}
+		UIManager:show(list)
+	end
 end
-userpatch.registerPatchPluginFunc("profiles", insertUpdateOption)
+userpatch.registerPatchPluginFunc("profiles", patchProfilesPlugin)
