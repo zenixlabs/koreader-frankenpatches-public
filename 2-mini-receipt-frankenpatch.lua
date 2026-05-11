@@ -1,9 +1,8 @@
 --[[ 2-mini-receipt-frankenpatch.lua ]]
 --little box with reading progress markers that can be summoned with a gesture
 
---[ v1.1 ]
---chapter index
---current book metrics in 'today' field
+--[ v1.1.1 ]
+--if chapter_page not avail, fall back to (book_page - 1)
 
 local Blitbuffer = require("ffi/blitbuffer")
 local CenterContainer = require("ui/widget/container/centercontainer")
@@ -199,7 +198,7 @@ function quicklookwindow:init()
     local chapter_page = 0
     if ReaderToc then
         chapter_title = ReaderToc:getTocTitleByPage(book_page) or "" -- Chapter name
-        chapter_page = ReaderToc:getChapterPagesDone(book_page) or 0
+        chapter_page = ReaderToc:getChapterPagesDone(book_page) or book_page - 1 or 0
         chapter_page = chapter_page + 1 -- This +1 is to include the page you're looking at
         chapter_total = ReaderToc:getChapterPageCount(book_page) or book_total
         chapter_left = ReaderToc:getChapterPagesLeft(book_page) or book_left
