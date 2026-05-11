@@ -50,7 +50,7 @@ appends 'Page x of y' to the folder name in filemanager view. very helpful if yo
 INSTALLATION: drop the .lua into the koreader/patches folder and restart.
 
 # [2-profile-update.lua](https://github.com/zenixlabs/koreader-frankenpatches-public/blob/main/2-profile-update.lua)
-<img width="1431" height="254" alt="download" src="https://github.com/user-attachments/assets/3833195f-7c42-43a0-9bb9-9217a995340a" />
+<img width="971" height="425" alt="asdfasdf" src="https://github.com/user-attachments/assets/1a227bbf-0c46-437c-9ba4-44f044a4a00a" />
 
 - adds 'Update' option to profile submenu.
 - adds 'Apply Profile' dispatcher action that shows a list of all saved profiles.
