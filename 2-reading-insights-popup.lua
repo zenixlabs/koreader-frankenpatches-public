@@ -1,5 +1,5 @@
---[ reading insights popup v1.0.49 ] 
--- tweaked: help text, checkbutton text
+--[ reading insights popup v1.0.50 ] 
+-- tweaked: event name
 
 -- ABOUT:
 -- this is a modified version of the 'reading insights popup' userpatch made by u/quanganhdo.
@@ -1406,7 +1406,7 @@ end
 
 Dispatcher:registerAction("reading_insights_popup", {
     category = "none",
-    event = "ShowReadingInsightsPopup",
+    event = "ShowReadingInsightsPopup_frp",
     title = _("Reading statistics: reading insights"),
     general = true,
 })
@@ -2045,7 +2045,7 @@ function ReadingInsightsPopup:onCloseWidget()
 end
 
 -- Hook into ReaderUI to handle the event
-function ReaderUI.onShowReadingInsightsPopup(this)
+function ReaderUI.onShowReadingInsightsPopup_frp(this)
     local popup = ReadingInsightsPopup:new{
         ui = this,
     }
@@ -2053,7 +2053,7 @@ function ReaderUI.onShowReadingInsightsPopup(this)
     return true
 end
 
-function FileManager:onShowReadingInsightsPopup()
+function FileManager:onShowReadingInsightsPopup_frp()
     local popup = ReadingInsightsPopup:new{
         ui = this,
     }
